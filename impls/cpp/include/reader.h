@@ -4,6 +4,9 @@
 #include <cassert>
 #include <string>
 #include <regex>
+#include <memory>
+
+#include "../include/types.h"
 
 static const std::regex TOKEN_REGEXES[] = {
     std::regex("~@"),
@@ -12,9 +15,9 @@ static const std::regex TOKEN_REGEXES[] = {
     std::regex("[^\\s\\[\\]{}('\"`,;)]+"),
 };
 
-class Tokeniser {
+class Reader {
 public:
-    Tokeniser(const std::string& line);
+    Reader(const std::string& line);
 
     std::string peek() const;
     std::string next();
