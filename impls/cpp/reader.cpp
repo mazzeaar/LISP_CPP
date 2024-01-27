@@ -1,48 +1,24 @@
-#include <cassert>
-#include <string>
-#include <regex>
+#include "reader.h"
 
-static const std::regex WHITESPACE("[\\s,]+|;.*");
-static const std::regex TOKEN_REGEXES[] = {
-    std::regex("~@"),
-    std::regex("[\\[\\]{}()'`~^@]"),
-    std::regex("\"(?:\\\\.|[^\\\\\"])*\""),
-    std::regex("[^\\s\\[\\]{}('\"`,;)]+"),
-};
+Tokeniser::Tokeniser(const std::string& line)
+    : m_iter(line.begin()), m_end(line.end())
+{
+    nextToken();
+}
 
-class Tokeniser {
-public:
-    Tokeniser(const std::string& line)
-        : m_iter(line.begin()), m_end(line.end())
-    {
-        nextToken();
-    }
+std::string Tokeniser::peek() const
+{
+    assert(!eof() && "Reader::peek() reading past EOF\n");
+    return m_token;
+}
 
-    std::string peek()
-    {
-        assert(!eof() && "Reader::peek() reading past EOF\n");
-        return m_token;
-    }
-
-    std::string next()
-    {
-        assert(!eof() && "Reader::next() reading past EOF\n");
-        std::string token = peek();
-        nextToken();
-        return token;
-    }
-
-    inline bool eof() const { return m_iter == m_end; }
-
-private:
-    void nextToken();
-    void skipWhitespace();
-    bool matchRegex(const std::regex& regex);
-
-    std::string m_token;
-    std::string::const_iterator m_iter;
-    std::string::const_iterator m_end;
-};
+std::string Tokeniser::next()
+{
+    assert(!eof() && "Reader::next() reading past EOF\n");
+    std::string token = peek();
+    nextToken();
+    return token;
+}
 
 void Tokeniser::nextToken()
 {
@@ -62,7 +38,9 @@ void Tokeniser::nextToken()
 
 void Tokeniser::skipWhitespace()
 {
-    while ( matchRegex(WHITESPACE) ) {
+    static const std::regex whitespaces("[\\s,]+|;.*");
+
+    while ( matchRegex(whitespaces) ) {
         m_iter += m_token.size();
     }
 }
@@ -168,6 +146,23 @@ static void read_list(Tokeniser& tokeniser, void* SOME_LIST, const char closing_
         * to capture lists in lists...
         *
         * -> need a datatype (probably pointer?) to store the syntax tree
+        *
+        *
+
+        For example, if the string is "(+ 2 (* 3 4))" then
+        the read function will process this into a tree structure
+        that looks like this:
+
+                           List
+                          / |  \
+                         /  |   \
+                        /   |    \
+                    Sym:+  Int:2  List
+                                 / |  \
+                                /  |   \
+                               /   |    \
+                           Sym:*  Int:3  Int:4
+
         */
     }
 }
