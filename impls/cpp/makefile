@@ -7,25 +7,29 @@ OBJDIR = obj
 
 .PHONY: all clean test step0_repl step1_read_print 
 
-all: step0_repl step1_read_print
+all: clean step0_repl step1_read_print
 
 step0_repl: $(OBJDIR)/step0_repl.o | $(BINDIR)
-	$(CXX) $^ -o $(BINDIR)/$@
+	@echo "linking step0_repl"
+	@$(CXX) $^ -o $(BINDIR)/$@
 
 step1_read_print: $(OBJDIR)/step1_read_print.o $(OBJDIR)/reader.o | $(BINDIR)
-	$(CXX) $^ -o $(BINDIR)/$@
+	@echo "linking step1_read_print"
+	@$(CXX) $^ -o $(BINDIR)/$@
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp | $(OBJDIR)
-	$(CXX) $(CXXFLAGS) -I$(INCLUDEDIR) -c $< -o $@
+	@echo "compiling $<"
+	@$(CXX) $(CXXFLAGS) -I$(INCLUDEDIR) -c $< -o $@
 
 $(OBJDIR):
-	mkdir -p $(OBJDIR)
+	@mkdir -p $(OBJDIR)
 
 $(BINDIR):
-	mkdir -p $(BINDIR)
+	@mkdir -p $(BINDIR)
 
-test:
-	(cd ../../ && make "test^cpp^step1")
+test: clean 
+	@(cd ../../ && make "test^cpp^step1")
 
 clean:
-	rm -rf $(OBJDIR) $(BINDIR)
+	@echo "cleaning..."
+	@rm -rf $(OBJDIR) $(BINDIR)

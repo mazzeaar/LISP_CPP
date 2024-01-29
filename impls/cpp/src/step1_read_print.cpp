@@ -2,16 +2,12 @@
 #include <string>
 
 #include "../include/reader.h"
+#include "../include/types.h"
 
-std::string READ(const std::string& param);
-std::string EVAL(const std::string& param);
-std::string PRINT(const std::string& param);
+types::ValuePtr READ(const std::string& input);
+types::ValuePtr EVAL(const types::ValuePtr& tokens);
+void PRINT(const types::ValuePtr& tokens);
 std::string REP(const std::string& param);
-
-static std::shared_ptr<types::Object> tokenize_string(const std::string& input);
-static std::shared_ptr<types::Object> read_form(Reader& tokeniser);
-static std::shared_ptr<types::Object> read_atom(Reader& tokeniser);
-static void read_list(Reader& tokeniser, std::shared_ptr<types::List> list, const char closing_bracket);
 
 bool read_line(const std::string& prompt, std::string& line)
 {
@@ -31,91 +27,37 @@ int main()
     std::string line;
 
     while ( read_line(prompt, line) ) {
-        //std::cout << REP(line) << std::endl;
-
-        std::shared_ptr<types::Object> tokens;
-        try {
-            tokens = tokenize_string(line);
-        }
-        catch ( std::exception& e ) {
-            std::cout << e.what() << std::endl;
-            return 1;
-        }
-
-        std::cout << tokens->toString() << std::endl;
+        PRINT(EVAL(READ(line)));
     }
 
     return 0;
 }
 
-std::string READ(const std::string& param)
+types::ValuePtr READ(const std::string& input)
 {
-    return param;
+    types::ValuePtr tokenized_input;
+
+    try {
+        tokenized_input = tokenize_string(input);
+    }
+    catch ( ParseException& e ) {
+        return types::ValuePtr(new types::Atom(e.what()));
+    }
+
+    return tokenized_input;
 }
 
-std::string EVAL(const std::string& param)
+types::ValuePtr EVAL(const types::ValuePtr& tokens)
 {
-    return param;
+    return tokens;
 }
 
-std::string PRINT(const std::string& param)
+void PRINT(const types::ValuePtr& tokens)
 {
-    return param;
+    std::cout << tokens << std::endl;
 }
 
 std::string REP(const std::string& param)
 {
-    return PRINT(EVAL(READ(param)));
-}
-
-std::shared_ptr<types::Object> tokenize_string(const std::string& input)
-{
-    Reader tokeniser(input);
-    std::shared_ptr<types::Object> tokens = read_form(tokeniser);
-
-    return tokens;
-}
-
-std::shared_ptr<types::Object> read_form(Reader& tokeniser)
-{
-    if ( tokeniser.eof() ) {
-        return nullptr;
-    }
-
-    std::string token = tokeniser.peek();
-
-    switch ( token[0] ) {
-        case '[':
-        case '(':
-        case '{': {
-            char closing_bracket = (token[0] == '[') ? ']' : (token[0] == '(') ? ')' : '}';
-            tokeniser.next(); // consume bracket
-            std::shared_ptr<types::List> list(new types::List());
-            read_list(tokeniser, list, closing_bracket);
-            return list;
-        }
-        default:
-            return read_atom(tokeniser);
-    }
-}
-
-std::shared_ptr<types::Object> read_atom(Reader& tokeniser)
-{
-    std::string atom_value;
-    atom_value = tokeniser.next(); // Consume and get the atom value
-    return std::make_shared<types::Atom>(atom_value);
-}
-
-
-void read_list(Reader& tokeniser, std::shared_ptr<types::List> list, const char closing_bracket)
-{
-    while ( !tokeniser.eof() && tokeniser.peek() != std::string(1, closing_bracket) ) {
-        list->push_back(read_form(tokeniser));
-    }
-
-    if ( tokeniser.eof() ) {
-        throw error::eof(); // TODO: define errors
-    }
-
-    tokeniser.next(); // consume closing bracket
+    return "";
 }

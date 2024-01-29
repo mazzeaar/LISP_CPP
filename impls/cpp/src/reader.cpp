@@ -1,25 +1,5 @@
 #include "../include/reader.h"
 
-Reader::Reader(const std::string& line)
-    : m_iter(line.begin()), m_end(line.end())
-{
-    nextToken();
-}
-
-std::string Reader::peek() const
-{
-    assert(!eof() && "Reader::peek() reading past EOF\n");
-    return m_token;
-}
-
-std::string Reader::next()
-{
-    assert(!eof() && "Reader::next() reading past EOF\n");
-    std::string token = peek();
-    nextToken();
-    return token;
-}
-
 void Reader::nextToken()
 {
     m_iter += m_token.size();
@@ -64,55 +44,56 @@ bool Reader::matchRegex(const std::regex& regex)
     return true;
 }
 
-// reader.cpp
-static std::shared_ptr<types::Object> tokenize_string(const std::string& input);
-static std::shared_ptr<types::Object> read_form(Reader& tokeniser);
-static std::shared_ptr<types::Object> read_atom(Reader& tokeniser);
-static void read_list(Reader& tokeniser, std::shared_ptr<types::List> list, const char closing_bracket);
-
-std::shared_ptr<types::Object> tokenize_string(const std::string& input)
+types::ValuePtr tokenize_string(const std::string& input)
 {
-    Reader tokeniser(input);
-    std::shared_ptr<types::Object> tokens = read_form(tokeniser);
+    Reader reader(input);
 
-    return tokens;
+    if ( reader.eof() ) {
+        throw ParseException("empty line!", "EOF");
+    }
+
+    return read_form(reader);
 }
 
-std::shared_ptr<types::Object> read_form(Reader& tokeniser)
+types::ValuePtr read_form(Reader& reader)
 {
-    std::string token = tokeniser.peek();
+    assert(!reader.eof() && "read_form failed - reader reached EOF\n");
 
-    switch ( token[0] ) {
-        case '[':
-        case '(':
-        case '{': {
-            char closing_bracket = (token[0] == '[') ? ']' : (token[0] == '(') ? ')' : '}';
-            tokeniser.next(); // consume bracket
-            std::shared_ptr<types::List> list(new types::List());
-            read_list(tokeniser, list, closing_bracket);
-            return list;
+    char token = reader.peek().front();
+    switch ( token ) {
+        case '(': {
+            reader.next();
+            std::shared_ptr<types::ValueVec> list(new types::ValueVec);
+            read_list(reader, list.get(), ')');
+            return types::ValuePtr(new types::List(list.get()));
         }
+                //case '[': // vector
+                //case '{': // hash 
         default:
-            return read_atom(tokeniser);
+            return read_atom(reader);
     }
 }
 
-std::shared_ptr<types::Object> read_atom(Reader& tokeniser)
+types::ValuePtr read_atom(Reader& reader)
 {
-    //static const std::regex string_regex("\"(?:\\.|[^\\\"])*\"?");
-    //static const std::regex integer_regex("^[-+]?\\d+$");
+    if ( reader.eof() ) {
+        throw ParseException("huh?");
+    }
 
     std::string atom_value;
-    atom_value = tokeniser.next(); // Consume and get the atom value
-    return std::make_shared<types::Atom>(atom_value);
+    atom_value = reader.next();
+    return types::ValuePtr(new types::Atom(atom_value));
 }
 
-
-void read_list(Reader& tokeniser, std::shared_ptr<types::List> list, const char closing_bracket)
+void read_list(Reader& reader, types::ValueVec* list, char closing_bracket)
 {
-    while ( tokeniser.peek() != std::string(1, closing_bracket) ) {
-        list->push_back(read_form(tokeniser));
+    while ( !reader.eof() && reader.peek() != std::string(1, closing_bracket) ) {
+        list->push_back(read_form(reader));
     }
 
-    tokeniser.next(); // consume closing bracket
+    if ( reader.eof() ) {
+        throw ParseException("EOF", "unbalanced ')");
+    }
+
+    reader.next(); // consume bracket
 }
