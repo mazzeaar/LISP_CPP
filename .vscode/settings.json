@@ -52,6 +52,11 @@
         "__split_buffer": "cpp",
         "array": "cpp",
         "deque": "cpp",
-        "unordered_map": "cpp"
+        "unordered_map": "cpp",
+        "__node_handle": "cpp",
+        "optional": "cpp",
+        "__memory": "cpp",
+        "__tree": "cpp",
+        "map": "cpp"
     }
 }
