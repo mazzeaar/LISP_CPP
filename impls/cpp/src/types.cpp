@@ -1,18 +1,52 @@
 #include "../include/types.h"
 
 namespace type {
-    ValuePtr boolean(bool value);
     // ValuePtr builtin(const String& name, BuiltIn::ApplyFunc handler);
-    ValuePtr falseValue();
-
-    ValuePtr integer(int64_t value);
-    ValuePtr integer(const String& token);
-    ValuePtr keyword(const String& token);
     // ValuePtr lambda(const std::vector<std::string>&, ValuePtr, malEnvPtr);
-    ValuePtr macro(const Lambda& lambda);
-    ValuePtr nilValue();
-    ValuePtr symbol(const std::string& token);
-    ValuePtr trueValue();
+    // ValuePtr macro(const Lambda& lambda);
+
+    ValuePtr boolean(bool value)
+    {
+        return value ? trueValue() : falseValue();
+    }
+
+    ValuePtr integer(int64_t value)
+    {
+        return ValuePtr(new Integer(value));
+    }
+
+    ValuePtr integer(const std::string& token)
+    {
+        return integer(std::stoi(token));
+    }
+
+    ValuePtr keyword(const std::string& token)
+    {
+        return ValuePtr(new Keyword(token));
+    }
+
+    ValuePtr symbol(const std::string& token)
+    {
+        return ValuePtr(new Symbol(token));
+    }
+
+    ValuePtr falseValue()
+    {
+        static ValuePtr False(new Constant("false"));
+        return ValuePtr(False);
+    }
+
+    ValuePtr nilValue()
+    {
+        static ValuePtr True(new Constant("nil"));
+        return ValuePtr(True);
+    }
+
+    ValuePtr trueValue()
+    {
+        static ValuePtr Nil(new Constant("true"));
+        return ValuePtr(Nil);
+    }
 
     ValuePtr hash(ValueIter begin, ValueIter end, bool isEvaluated)
     {
