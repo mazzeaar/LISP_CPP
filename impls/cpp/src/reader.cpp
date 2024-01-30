@@ -75,7 +75,12 @@ ValuePtr read_form(Reader& reader)
         case '[': {
             return type::vector(init_sequence(']'));
         }
-                //case '{': // hash 
+        case '{': {
+            reader.next();
+            ValueVec items;
+            read_list(reader, &items, '}');
+            return type::hash(items.begin(), items.end(), false);
+        }
         default:
             return read_atom(reader);
     }

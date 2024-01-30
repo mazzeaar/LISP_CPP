@@ -4,10 +4,7 @@ namespace type {
     ValuePtr boolean(bool value);
     // ValuePtr builtin(const String& name, BuiltIn::ApplyFunc handler);
     ValuePtr falseValue();
-    ValuePtr hash(ValueIter argsBegin, ValueIter argsEnd,
-                        bool isEvaluated);
-    // ValuePtr hash(const malHash::Map& map);
-    // ValuePtr hash(const std::map<std::String, ValuePtr>& map);
+
     ValuePtr integer(int64_t value);
     ValuePtr integer(const String& token);
     ValuePtr keyword(const String& token);
@@ -16,6 +13,16 @@ namespace type {
     ValuePtr nilValue();
     ValuePtr symbol(const std::string& token);
     ValuePtr trueValue();
+
+    ValuePtr hash(ValueIter begin, ValueIter end, bool isEvaluated)
+    {
+        return ValuePtr(new Hash(begin, end, isEvaluated));
+    }
+
+    ValuePtr hash(const Hash::Map& map)
+    {
+        return ValuePtr(new Hash(map));
+    }
 
     ValuePtr vector(ValueVec* items)
     {

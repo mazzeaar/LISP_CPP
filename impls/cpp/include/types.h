@@ -257,9 +257,11 @@ public:
     Hash(ValueIter begin, ValueIter end, bool isEvaluated)
         : m_map(createMap(begin, end)), m_isEval(isEvaluated)
     { }
+
     Hash(const Hash::Map& map)
         : m_map(map), m_isEval(true)
     { }
+
     Hash(const Hash& that, ValuePtr meta)
         : Expression(meta), m_map(that.m_map), m_isEval(that.m_isEval)
     { }
@@ -303,7 +305,7 @@ public:
         return res + "}";
     }
 
-    virtual bool operator==(const Expression* rhs)
+    virtual bool operator==(const Expression* rhs) const override
     {
         const Hash::Map& rhs_map = static_cast<const Hash*>(rhs)->m_map;
 
