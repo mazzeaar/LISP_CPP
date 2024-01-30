@@ -4,9 +4,9 @@
 #include "../include/reader.h"
 #include "../include/types.h"
 
-types::ValuePtr READ(const std::string& input);
-types::ValuePtr EVAL(const types::ValuePtr& tokens);
-void PRINT(const types::ValuePtr& tokens);
+ValuePtr READ(const std::string& input);
+ValuePtr EVAL(const ValuePtr& tokens);
+void PRINT(const ValuePtr& tokens);
 std::string REP(const std::string& param);
 
 bool read_line(const std::string& prompt, std::string& line)
@@ -33,26 +33,26 @@ int main()
     return 0;
 }
 
-types::ValuePtr READ(const std::string& input)
+ValuePtr READ(const std::string& input)
 {
-    types::ValuePtr tokenized_input;
+    ValuePtr tokenized_input;
 
     try {
         tokenized_input = tokenize_string(input);
     }
     catch ( ParseException& e ) {
-        return types::ValuePtr(new types::Atom(e.what()));
+        return type::error(e);
     }
 
     return tokenized_input;
 }
 
-types::ValuePtr EVAL(const types::ValuePtr& tokens)
+ValuePtr EVAL(const ValuePtr& tokens)
 {
     return tokens;
 }
 
-void PRINT(const types::ValuePtr& tokens)
+void PRINT(const ValuePtr& tokens)
 {
     std::cout << tokens << std::endl;
 }
