@@ -88,12 +88,66 @@ ValuePtr read_form(Reader& reader)
 
 ValuePtr read_atom(Reader& reader)
 {
-    if ( reader.eof() ) {
-        throw ParseException("huh?");
-    }
+    struct ReaderMacro {
+        const char* token;
+        const char* symbol;
+    };
+
+    ReaderMacro macroTable[] = {
+        { "@",  "deref" },
+        { "`",  "quasiquote" },
+        { "'",  "quote" },
+        { "~@", "splice-unquote" },
+        { "~",  "unquote" }
+    };
+
+    struct Constant {
+        const char* token;
+        ValuePtr value;
+    };
+
+    Constant constantTable[] = {
+        { "false",  type::falseValue() },
+        { "nil",    type::nilValue() },
+        { "true",   type::trueValue() }
+    };
 
     std::string token = reader.next();
-    return type::string(token);
+    if ( token[0] == '"' ) {
+
+        // TODO: unescape string
+        return type::string(token);
+    }
+
+    if ( token[0] == ':' ) {
+        return type::keyword(token);
+    }
+
+    if ( token == "^" ) {
+        ValuePtr meta = read_form(reader);
+        ValuePtr value = read_form(reader);
+
+        return type::list(type::symbol("with-meta"), value, meta);
+    }
+
+    for ( Constant& constant : constantTable ) {
+        if ( token == constant.token ) {
+            return constant.value;
+        }
+    }
+
+    for ( ReaderMacro& macro: macroTable ) {
+        if ( token == macro.token ) {
+            return process_macro(reader, macro.symbol);
+        }
+    }
+
+    static const std::regex int_regex("^[-+]?\\d+$");
+    if ( std::regex_match(token, int_regex) ) {
+        return type::integer(token);
+    }
+
+    return type::symbol(token);
 }
 
 void read_list(Reader& reader, ValueVec* items, char closing_bracket)
@@ -107,4 +161,9 @@ void read_list(Reader& reader, ValueVec* items, char closing_bracket)
     }
 
     reader.next(); // consume bracket
+}
+
+ValuePtr process_macro(Reader& reader, const std::string& symbol)
+{
+    return type::list(type::symbol(symbol), read_form(reader));
 }
