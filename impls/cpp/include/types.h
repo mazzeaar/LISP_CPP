@@ -353,8 +353,8 @@ namespace type {
     // ValuePtr hash(const malHash::Map& map);
     // ValuePtr hash(const std::map<std::String, ValuePtr>& map);
     ValuePtr integer(int64_t value);
-    ValuePtr integer(const String& token);
-    ValuePtr keyword(const String& token);
+    ValuePtr integer(const std::string& token);
+    ValuePtr keyword(const std::string& token);
     // ValuePtr lambda(const std::vector<std::string>&, ValuePtr, malEnvPtr);
     ValuePtr list(ValueVec* items);
     ValuePtr list(ValueIter begin, ValueIter end);
