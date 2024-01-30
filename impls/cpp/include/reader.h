@@ -51,7 +51,8 @@ private:
 
 ValuePtr read_atom(Reader& reader);
 ValuePtr read_form(Reader& reader);
-ValuePtr tokenize_string(const std::string& input);
 void read_list(Reader& reader, ValueVec* items, char closing_bracket);
+ValuePtr process_macro(Reader& reader, const std::string& symbol);
+ValuePtr tokenize_string(const std::string& input);
 
 #endif // READER_H
