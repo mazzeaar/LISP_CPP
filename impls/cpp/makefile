@@ -13,7 +13,7 @@ step0_repl: $(OBJDIR)/step0_repl.o | $(BINDIR)
 	@echo "linking step0_repl"
 	@$(CXX) $^ -o $(BINDIR)/$@
 
-step1_read_print: $(OBJDIR)/step1_read_print.o $(OBJDIR)/reader.o | $(BINDIR)
+step1_read_print: $(OBJDIR)/step1_read_print.o $(OBJDIR)/reader.o $(OBJDIR)/types.o | $(BINDIR)
 	@echo "linking step1_read_print"
 	@$(CXX) $^ -o $(BINDIR)/$@
 
