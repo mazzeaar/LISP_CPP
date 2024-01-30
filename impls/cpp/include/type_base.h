@@ -56,7 +56,7 @@ public:
 
     friend std::ostream& operator<<(std::ostream& os, const RefCountedPtr& ptr)
     {
-        os << ptr->toString();
+        os << ptr->toString(true);
         return os;
     }
 
