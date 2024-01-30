@@ -5,25 +5,28 @@ SRCDIR = src
 BINDIR = bin
 OBJDIR = obj
 
-.PHONY: all clean test step0_repl step1_read_print 
+.PHONY: all clean test
+
+STEP1_OBJS := utils.o reader.o types.o
+STEP2_OBJS := $(STEP1_OBJS)
 
 all: clean step0_repl step1_read_print step2_eval
 
 step0_repl: $(OBJDIR)/step0_repl.o | $(BINDIR)
-	@echo "linking step0_repl"
+	@echo "linking $@"
 	@$(CXX) $^ -o $(BINDIR)/$@
 
-step1_read_print: $(OBJDIR)/step1_read_print.o $(OBJDIR)/utils.o $(OBJDIR)/reader.o $(OBJDIR)/types.o | $(BINDIR)
-	@echo "linking step1_read_print"
-	@$(CXX) $^ -o $(BINDIR)/$@
+step1_read_print: step1_read_print.o $(STEP1_OBJS) | $(BINDIR)
+	@echo "linking $@"
+	@$(CXX) $(addprefix $(OBJDIR)/,$^) -o $(BINDIR)/$@
 
-step2_eval: $(OBJDIR)/step2_eval.o $(OBJDIR)/utils.o $(OBJDIR)/reader.o $(OBJDIR)/types.o | $(BINDIR)
-	@echo "linking step1_read_print"
-	@$(CXX) $^ -o $(BINDIR)/$@
+step2_eval: step2_eval.o $(STEP2_OBJS) | $(BINDIR)
+	@echo "linking $@"
+	@$(CXX) $(addprefix $(OBJDIR)/,$^) -o $(BINDIR)/$@
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.cpp | $(OBJDIR)
+%.o: $(SRCDIR)/%.cpp | $(OBJDIR)
 	@echo "compiling $<"
-	@$(CXX) $(CXXFLAGS) -I$(INCLUDEDIR) -c $< -o $@
+	@$(CXX) $(CXXFLAGS) -I$(INCLUDEDIR) -c $< -o $(OBJDIR)/$@
 
 $(OBJDIR):
 	@mkdir -p $(OBJDIR)
