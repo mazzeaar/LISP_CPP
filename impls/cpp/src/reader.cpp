@@ -14,6 +14,14 @@ void Reader::nextToken()
             return;
         }
     }
+
+    std::string mismatch(m_iter, m_end);
+    if ( mismatch[0] == '"' ) {
+        throw ParseException("unbalanced");
+    }
+    else {
+        throw ParseException("unexpected '%s", mismatch.c_str());
+    }
 }
 
 void Reader::skipWhitespace()
@@ -59,7 +67,7 @@ ValuePtr read_form(Reader& reader)
 {
     assert(!reader.eof() && "read_form failed - reader reached EOF\n");
 
-    auto init_sequence = [&reader] (char closing_bracket) -> ValueVec*
+    const auto init_sequence = [&reader] (char closing_bracket) -> ValueVec*
     {
         reader.next();
         std::unique_ptr<ValueVec> items(new ValueVec);
@@ -67,8 +75,7 @@ ValuePtr read_form(Reader& reader)
         return items.release();
     };
 
-    char token = reader.peek().front();
-    switch ( token ) {
+    switch ( reader.peek().front() ) {
         case '(': {
             return type::list(init_sequence(')'));
         }
@@ -76,10 +83,7 @@ ValuePtr read_form(Reader& reader)
             return type::vector(init_sequence(']'));
         }
         case '{': {
-            reader.next();
-            ValueVec items;
-            read_list(reader, &items, '}');
-            return type::hash(items.begin(), items.end(), false);
+            return type::hash(init_sequence('}'), false);
         }
         default:
             return read_atom(reader);
@@ -88,35 +92,23 @@ ValuePtr read_form(Reader& reader)
 
 ValuePtr read_atom(Reader& reader)
 {
-    struct ReaderMacro {
-        const char* token;
-        const char* symbol;
+    static const std::unordered_map<std::string, ValuePtr> constantTable = {
+        {"false", type::falseValue()},
+        {"nil", type::nilValue()},
+        {"true", type::trueValue()}
     };
 
-    ReaderMacro macroTable[] = {
-        { "@",  "deref" },
-        { "`",  "quasiquote" },
-        { "'",  "quote" },
-        { "~@", "splice-unquote" },
-        { "~",  "unquote" }
-    };
-
-    struct Constant {
-        const char* token;
-        ValuePtr value;
-    };
-
-    Constant constantTable[] = {
-        { "false",  type::falseValue() },
-        { "nil",    type::nilValue() },
-        { "true",   type::trueValue() }
+    static const std::unordered_map<std::string, std::string> macroTable = {
+        {"@", "deref"},
+        {"`", "quasiquote"},
+        {"'", "quote"},
+        {"~@", "splice-unquote"},
+        {"~", "unquote"}
     };
 
     std::string token = reader.next();
     if ( token[0] == '"' ) {
-
-        // TODO: unescape string
-        return type::string(token);
+        return type::string(unescape(token));
     }
 
     if ( token[0] == ':' ) {
@@ -130,16 +122,12 @@ ValuePtr read_atom(Reader& reader)
         return type::list(type::symbol("with-meta"), value, meta);
     }
 
-    for ( Constant& constant : constantTable ) {
-        if ( token == constant.token ) {
-            return constant.value;
-        }
+    if ( auto constIt = constantTable.find(token); constIt != constantTable.end() ) {
+        return constIt->second;
     }
 
-    for ( ReaderMacro& macro: macroTable ) {
-        if ( token == macro.token ) {
-            return process_macro(reader, macro.symbol);
-        }
+    if ( auto macroIt = macroTable.find(token); macroIt != macroTable.end() ) {
+        return process_macro(reader, macroIt->second);
     }
 
     static const std::regex int_regex("^[-+]?\\d+$");
