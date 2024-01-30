@@ -1,8 +1,9 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include "../include/type_base.h"
-#include "../include/utils.h"
+#include "type_base.h"
+#include "utils.h"
+
 #include <vector>
 #include <iostream>
 #include <map>
@@ -33,12 +34,11 @@ public:
     virtual ~Expression() { /* add logging */ }
 
     virtual const std::string toString(bool readably) const = 0;
-
     bool isEqualTo(const Expression* rhs) const;
+
     friend std::ostream& operator<<(std::ostream& os, const Expression& ex)
     {
-        os << ex.toString(true);
-        return os;
+        return os << ex.toString(true);
     }
 
 protected:
@@ -53,15 +53,8 @@ public:
         : Expression(meta), m_atom(that.m_atom)
     { }
 
-    virtual const std::string toString(bool readably) const override
-    {
-        return "(atom " + m_atom->toString(readably) + ")";
-    }
-
-    virtual bool operator==(const Expression* rhs) const override
-    {
-        return this->m_atom->isEqualTo(rhs);
-    }
+    const std::string toString(bool readably) const;
+    bool operator==(const Expression* rhs) const;
 
 private:
     ValuePtr m_atom;
@@ -74,15 +67,8 @@ public:
         : Expression(meta), m_name(that.m_name)
     { }
 
-    virtual const std::string toString(bool readably) const override
-    {
-        return m_name;
-    }
-
-    virtual bool operator==(const Expression* rhs) const override
-    {
-        return this == rhs;
-    }
+    const std::string toString(bool readably) const;
+    bool operator==(const Expression* rhs) const;
 
 private:
     const std::string m_name;
@@ -95,17 +81,10 @@ public:
         : Expression(meta), m_val(that.m_val)
     { }
 
-    virtual const std::string toString(bool readably) const override
-    {
-        return std::to_string(m_val);
-    }
-
     int64_t value() const { return m_val; }
 
-    virtual bool operator==(const Expression* rhs) const override
-    {
-        return m_val == static_cast<const Integer*>(rhs)->m_val;
-    }
+    const std::string toString(bool readably) const;
+    bool operator==(const Expression* rhs) const;
 
 private:
     const int64_t m_val;
@@ -118,7 +97,7 @@ public:
         : Expression(meta), m_string(that.value())
     { }
 
-    virtual const std::string toString(bool readably) const override { return m_string; }
+    virtual const std::string toString(bool readably) const { return m_string; }
     std::string value() const { return m_string; }
 private:
     const std::string m_string;
@@ -127,19 +106,10 @@ private:
 class String : public StringBase {
 public:
     String(const std::string& token) : StringBase(token) { }
-    String(const String& that, ValuePtr meta)
-        : StringBase(that, meta)
-    { }
+    String(const String& that, ValuePtr meta) : StringBase(that, meta) { }
 
-    virtual const std::string toString(bool readably) const
-    {
-        return readably ? escape(value()) : value();
-    }
-
-    virtual bool operator==(const Expression* rhs) const
-    {
-        return value() == static_cast<const String*>(rhs)->value();
-    }
+    const std::string toString(bool readably) const override;
+    bool operator==(const Expression* rhs) const override;
 };
 
 class Keyword : public StringBase {
@@ -147,20 +117,14 @@ public:
     Keyword(const std::string& token) : StringBase(token) { }
     Keyword(const Keyword& that, ValuePtr meta) : StringBase(that, meta) { }
 
-    virtual bool operator==(const Expression* rhs) const
-    {
-        return value() == static_cast<const Keyword*>(rhs)->value();
-    }
+    bool operator==(const Expression* rhs) const override;
 };
 class Symbol : public StringBase {
 public:
     Symbol(const std::string& token) : StringBase(token) { }
     Symbol(const Symbol& that, ValuePtr meta) : StringBase(that, meta) { }
 
-    virtual bool operator==(const Expression* rhs) const
-    {
-        return value() == static_cast<const Symbol*>(rhs)->value();
-    }
+    bool operator==(const Expression* rhs) const override;
 };
 
 class Sequence : public Expression {
@@ -180,48 +144,8 @@ public:
     ValueIter begin() const { return m_items->begin(); }
     ValueIter end() const { return m_items->end(); }
 
-    virtual const std::string toString(bool readably) const override
-    {
-        std::string res;
-        ValueVec::const_iterator iter = m_items->cbegin();
-        ValueVec::const_iterator end = m_items->cend();
-
-        if ( iter != end ) {
-            res += (*iter)->toString(readably);
-            ++iter;
-        }
-
-        while ( iter != end ) {
-            res += " ";
-            res += (*iter)->toString(readably);
-            ++iter;
-        }
-
-        return res;
-    }
-
-    virtual bool operator==(const Expression* rhs) const override
-    {
-        const Sequence* rhs_seq = static_cast<const Sequence*>(rhs);
-
-        if ( count() != rhs_seq->count() ) {
-            return false;
-        }
-
-        ValueIter this_it = m_items->begin(),
-            rhs_it = rhs_seq->begin(),
-            end = m_items->end();
-        while ( this_it != end ) {
-            if ( !(*this_it)->isEqualTo((*rhs_it).ptr()) ) {
-                return false;
-            }
-
-            ++this_it;
-            ++rhs_it;
-        }
-
-        return true;
-    }
+    virtual const std::string toString(bool readably) const override;
+    bool operator==(const Expression* rhs) const override;
 
 private:
     ValueVec* const m_items;
@@ -233,10 +157,7 @@ public:
     List(ValueIter begin, ValueIter end) : Sequence(begin, end) { }
     List(const List& that, ValuePtr meta) : Sequence(that, meta) { }
 
-    virtual const std::string toString(bool readably) const override
-    {
-        return '(' + Sequence::toString(readably) + ')';
-    }
+    const std::string toString(bool readably) const override;
 };
 
 class Vector : public Sequence {
@@ -245,103 +166,27 @@ public:
     Vector(ValueIter begin, ValueIter end) : Sequence(begin, end) { }
     Vector(const List& that, ValuePtr meta) : Sequence(that, meta) { }
 
-    virtual const std::string toString(bool readably) const override
-    {
-        return '[' + Sequence::toString(readably) + ']';
-    }
+    const std::string toString(bool readably) const override;
 };
 
 class Hash : public Expression {
 public:
     typedef std::map<std::string, ValuePtr> Map;
 
+    Hash(const Hash::Map& map) : m_map(map), m_isEval(true) { }
     Hash(ValueIter begin, ValueIter end, bool isEvaluated)
         : m_map(createMap(begin, end)), m_isEval(isEvaluated)
     { }
-
-    Hash(const Hash::Map& map)
-        : m_map(map), m_isEval(true)
-    { }
-
     Hash(const Hash& that, ValuePtr meta)
         : Expression(meta), m_map(that.m_map), m_isEval(that.m_isEval)
     { }
 
-    static std::string makeHashKey(ValuePtr key)
-    {
-        if ( const String* skey = dynamic_cast<String*>(key.ptr()) ) {
-            return skey->toString(true);
-        }
-        else if ( const Keyword* kkey = dynamic_cast<Keyword*>(key.ptr()) ) {
-            return kkey->toString(true);
-        }
-        else {
-            throw ParseException("%s is not a string or keyword", key->toString(true).c_str());
-        }
-    }
+    static std::string makeHashKey(ValuePtr key);
+    static Hash::Map addToMap(Hash::Map& map, ValueIter begin, ValueIter end);
+    static Hash::Map createMap(ValueIter begin, ValueIter end);
 
-    static Hash::Map addToMap(Hash::Map& map, ValueIter begin, ValueIter end)
-    {
-        for ( ValueIter it = begin; it != end; ++it ) {
-            std::string key = makeHashKey(*it++);
-            map[key] = *it;
-        }
-
-        return map;
-    }
-
-    static Hash::Map createMap(ValueIter begin, ValueIter end)
-    {
-        assert(std::distance(begin, end) % 2 == 0 && "hash map must be even sized!\n");
-        Hash::Map map;
-        return addToMap(map, begin, end);
-    }
-
-    virtual const std::string toString(bool readably) const override
-    {
-        std::string res = "{";
-        auto it = m_map.begin(),
-            end = m_map.end();
-
-        if ( it != end ) {
-            res += it->first + " " + it->second->toString(readably);
-            ++it;
-        }
-
-        for ( ; it != end; ++it ) {
-            res += " " + it->first + " " + it->second->toString(readably);
-        }
-
-        return res + "}";
-    }
-
-    virtual bool operator==(const Expression* rhs) const override
-    {
-        const Hash::Map& rhs_map = static_cast<const Hash*>(rhs)->m_map;
-
-        if ( m_map.size() != rhs_map.size() ) {
-            return false;
-        }
-
-        auto this_it = m_map.begin(),
-            rhs_it = rhs_map.begin(),
-            end = m_map.end();
-
-        while ( this_it != end ) {
-            if ( this_it->first != rhs_it->first ) {
-                return false;
-            }
-
-            if ( !this_it->second->isEqualTo(rhs_it->second.ptr()) ) {
-                return false;
-            }
-
-            ++this_it;
-            ++rhs_it;
-        }
-
-        return true;
-    }
+    const std::string toString(bool readably) const override;
+    bool operator==(const Expression* rhs) const override;
 
 private:
     const Map m_map;
@@ -355,7 +200,6 @@ class Lambda : public Applicable { };
 namespace type {
     // ValuePtr builtin(const String& name, BuiltIn::ApplyFunc handler);
     // ValuePtr lambda(const std::vector<std::string>&, ValuePtr, malEnvPtr);
-
 
     ValuePtr macro(const Lambda& lambda);
     ValuePtr error(ParseException& error);
