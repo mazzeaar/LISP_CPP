@@ -269,8 +269,15 @@ public:
 
     static std::string makeHashKey(ValuePtr key)
     {
-        // TODO
-        return key->toString(true);
+        if ( const String* skey = dynamic_cast<String*>(key.ptr()) ) {
+            return skey->toString(true);
+        }
+        else if ( const Keyword* kkey = dynamic_cast<Keyword*>(key.ptr()) ) {
+            return kkey->toString(true);
+        }
+        else {
+            throw ParseException("%s is not a string or keyword", key->toString(true).c_str());
+        }
     }
 
     static Hash::Map addToMap(Hash::Map& map, ValueIter begin, ValueIter end)
@@ -285,6 +292,7 @@ public:
 
     static Hash::Map createMap(ValueIter begin, ValueIter end)
     {
+        assert(std::distance(begin, end) % 2 == 0 && "hash map must be even sized!\n");
         Hash::Map map;
         return addToMap(map, begin, end);
     }
@@ -297,6 +305,7 @@ public:
 
         if ( it != end ) {
             res += it->first + " " + it->second->toString(readably);
+            ++it;
         }
 
         for ( ; it != end; ++it ) {
