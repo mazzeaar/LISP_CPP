@@ -5,7 +5,7 @@ SRCDIR = src
 BINDIR = bin
 OBJDIR = obj
 
-.PHONY: all clean test
+.PHONY: all clean test all_test
 
 STEP1_OBJS := $(OBJDIR)/utils.o $(OBJDIR)/reader.o $(OBJDIR)/types.o
 STEP2_OBJS := $(STEP1_OBJS)
@@ -36,6 +36,9 @@ $(BINDIR):
 
 test: clean 
 	@(cd ../../ && make "test^cpp^step2")
+
+all_test: clean 
+	@(cd ../../ && make "test^cpp")
 
 clean:
 	@echo "cleaning..."

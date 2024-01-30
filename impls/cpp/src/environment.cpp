@@ -32,7 +32,8 @@ ValuePtr Env::get(const std::string& symbol)
             return it->second;
         }
     }
-    throw ("'%s' not found", symbol.c_str());
+
+    FAIL("'%s' not found", symbol.c_str());
 }
 
 EnvPtr Env::find(const std::string& symbol)

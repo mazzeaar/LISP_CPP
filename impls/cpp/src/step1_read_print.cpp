@@ -5,8 +5,8 @@
 #include "../include/types.h"
 
 ValuePtr READ(const std::string& input);
-ValuePtr EVAL(const ValuePtr& tokens);
-void PRINT(const ValuePtr& tokens);
+ValuePtr EVAL(ValuePtr tokens);
+std::string PRINT(ValuePtr tokens);
 std::string REP(const std::string& param);
 
 bool read_line(const std::string& prompt, std::string& line)
@@ -27,7 +27,18 @@ int main()
     std::string line;
 
     while ( read_line(prompt, line) ) {
-        PRINT(EVAL(READ(line)));
+        std::string out = "";
+        try {
+            out = REP(line);
+        }
+        catch ( EmptyInputException& e ) {
+            continue;
+        }
+        catch ( ParseException& e ) {
+            out = e.what();
+        }
+
+        std::cout << out << std::endl;
     }
 
     return 0;
@@ -35,29 +46,20 @@ int main()
 
 ValuePtr READ(const std::string& input)
 {
-    ValuePtr tokenized_input;
-
-    try {
-        tokenized_input = tokenize_string(input);
-    }
-    catch ( ParseException& e ) {
-        return type::error(e);
-    }
-
-    return tokenized_input;
+    return tokenize_string(input);
 }
 
-ValuePtr EVAL(const ValuePtr& tokens)
+ValuePtr EVAL(ValuePtr tokens)
 {
     return tokens;
 }
 
-void PRINT(const ValuePtr& tokens)
+std::string PRINT(ValuePtr tokens)
 {
-    std::cout << tokens << std::endl;
+    return tokens->toString(true);
 }
 
-std::string REP(const std::string& param)
+std::string REP(const std::string& input)
 {
-    return "";
+    return PRINT(EVAL(READ(input)));
 }

@@ -57,7 +57,7 @@ ValuePtr tokenize_string(const std::string& input)
     Reader reader(input);
 
     if ( reader.eof() ) {
-        throw ParseException("empty line!", "EOF");
+        throw EmptyInputException();
     }
 
     return read_form(reader);

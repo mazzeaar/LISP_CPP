@@ -13,17 +13,20 @@ typedef RefCountedPtr<Expression>   ValuePtr;
 typedef std::vector<ValuePtr>       ValueVec;
 typedef ValueVec::iterator          ValueIter;
 
+class EmptyInputException : public std::exception { };
 class ParseException : public std::exception {
 public:
-    ParseException(const std::string& msg, const std::string& detail = "") : m_what(msg), m_detail(detail) { }
+    ParseException(const std::string& msg, const std::string& detail = "")
+        : m_msg(msg), m_detail(detail)
+    { }
 
     virtual const char* what() const throw()
     {
-        return m_what.c_str();
+        return m_msg.c_str();
     }
 
 private:
-    std::string m_what;
+    std::string m_msg;
     std::string m_detail;
 };
 
@@ -202,7 +205,6 @@ namespace type {
     // ValuePtr lambda(const std::vector<std::string>&, ValuePtr, malEnvPtr);
 
     ValuePtr macro(const Lambda& lambda);
-    ValuePtr error(ParseException& error);
     ValuePtr atom(ValuePtr value);
 
     ValuePtr symbol(const std::string& token);

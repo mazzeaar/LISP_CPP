@@ -1,13 +1,14 @@
 #include <iostream>
 #include <string>
 
-#include "../include/reader.h"
-#include "../include/types.h"
+#include "reader.h"
+#include "types.h"
+#include "environment.h"
 
-ValuePtr READ(const std::string& input);
-ValuePtr EVAL(const ValuePtr& tokens);
-void PRINT(const ValuePtr& tokens);
-std::string REP(const std::string& param);
+ValuePtr READ(std::string& input);
+ValuePtr EVAL(ValuePtr tokens, EnvPtr env);
+std::string PRINT(ValuePtr tokens);
+std::string read_eval_print(const std::string& param, EnvPtr env);
 
 bool read_line(const std::string& prompt, std::string& line)
 {
@@ -26,8 +27,21 @@ int main()
     const std::string prompt = "user> ";
     std::string line;
 
+    EnvPtr env;
     while ( read_line(prompt, line) ) {
-        PRINT(EVAL(READ(line)));
+        std::string out = "";
+
+        try {
+            out = read_eval_print(line, env);
+        }
+        catch ( EmptyInputException& e ) {
+            continue;
+        }
+        catch ( std::string& s ) {
+            out = s;
+        }
+
+        std::cout << out << std::endl;
     }
 
     return 0;
@@ -35,29 +49,20 @@ int main()
 
 ValuePtr READ(const std::string& input)
 {
-    ValuePtr tokenized_input;
-
-    try {
-        tokenized_input = tokenize_string(input);
-    }
-    catch ( ParseException& e ) {
-        return type::error(e);
-    }
-
-    return tokenized_input;
+    return tokenize_string(input);
 }
 
-ValuePtr EVAL(const ValuePtr& tokens)
+ValuePtr EVAL(ValuePtr ast, EnvPtr env)
 {
-    return tokens;
+    return ast->eval(env);
 }
 
-void PRINT(const ValuePtr& tokens)
+std::string PRINT(ValuePtr ast)
 {
-    std::cout << tokens << std::endl;
+    return ast->toString();
 }
 
-std::string REP(const std::string& param)
+std::string read_eval_print(const std::string& input, EnvPtr env)
 {
-    return "";
+    return PRINT(EVAL(READ(input), env));
 }

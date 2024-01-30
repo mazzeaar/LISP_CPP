@@ -118,11 +118,6 @@ namespace type {
     {
         return ValuePtr(new String(token));
     }
-
-    ValuePtr error(ParseException& error)
-    {
-        return string(error.what());
-    }
 } // namespace type
 
 // ================================
@@ -266,9 +261,8 @@ std::string Hash::makeHashKey(ValuePtr key)
     else if ( const Keyword* kkey = dynamic_cast<Keyword*>(key.ptr()) ) {
         return kkey->toString(true);
     }
-    else {
-        throw ParseException("%s is not a string or keyword", key->toString(true).c_str());
-    }
+
+    throw std::string("not a string or keyword");
 }
 
 Hash::Map Hash::addToMap(Hash::Map& map, ValueIter begin, ValueIter end)
