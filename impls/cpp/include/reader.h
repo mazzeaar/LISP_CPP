@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "../include/types.h"
+#include "../include/utils.h"
 
 static const std::regex TOKEN_REGEXES[] = {
     std::regex("~@"),
