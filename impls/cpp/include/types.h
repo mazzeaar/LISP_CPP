@@ -33,13 +33,12 @@ public:
 
     virtual const std::string toString(bool readably) const = 0;
 
+    bool isEqualTo(const Expression* rhs) const;
     friend std::ostream& operator<<(std::ostream& os, const Expression& ex)
     {
         os << ex.toString(true);
         return os;
     }
-
-    bool isEqualTo(const Expression* rhs) const;
 
 protected:
     virtual bool operator==(const Expression* rhs) const = 0;
@@ -142,8 +141,26 @@ public:
     }
 };
 
-class Keyword : public StringBase { };
-class Symbol : public StringBase { };
+class Keyword : public StringBase {
+public:
+    Keyword(const std::string& token) : StringBase(token) { }
+    Keyword(const Keyword& that, ValuePtr meta) : StringBase(that, meta) { }
+
+    virtual bool operator==(const Expression* rhs) const
+    {
+        return value() == static_cast<const Keyword*>(rhs)->value();
+    }
+};
+class Symbol : public StringBase {
+public:
+    Symbol(const std::string& token) : StringBase(token) { }
+    Symbol(const Symbol& that, ValuePtr meta) : StringBase(that, meta) { }
+
+    virtual bool operator==(const Expression* rhs) const
+    {
+        return value() == static_cast<const Symbol*>(rhs)->value();
+    }
+};
 
 class Sequence : public Expression {
 public:
