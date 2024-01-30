@@ -44,7 +44,7 @@ bool Reader::matchRegex(const std::regex& regex)
     return true;
 }
 
-types::ValuePtr tokenize_string(const std::string& input)
+ValuePtr tokenize_string(const std::string& input)
 {
     Reader reader(input);
 
@@ -55,40 +55,46 @@ types::ValuePtr tokenize_string(const std::string& input)
     return read_form(reader);
 }
 
-types::ValuePtr read_form(Reader& reader)
+ValuePtr read_form(Reader& reader)
 {
     assert(!reader.eof() && "read_form failed - reader reached EOF\n");
+
+    auto init_sequence = [&reader] (char closing_bracket) -> ValueVec*
+    {
+        reader.next();
+        std::unique_ptr<ValueVec> items(new ValueVec);
+        read_list(reader, items.get(), closing_bracket);
+        return items.release();
+    };
 
     char token = reader.peek().front();
     switch ( token ) {
         case '(': {
-            reader.next();
-            std::shared_ptr<types::ValueVec> list(new types::ValueVec);
-            read_list(reader, list.get(), ')');
-            return types::ValuePtr(new types::List(list.get()));
+            return type::list(init_sequence(')'));
         }
-                //case '[': // vector
+        case '[': {
+            return type::vector(init_sequence(']'));
+        }
                 //case '{': // hash 
         default:
             return read_atom(reader);
     }
 }
 
-types::ValuePtr read_atom(Reader& reader)
+ValuePtr read_atom(Reader& reader)
 {
     if ( reader.eof() ) {
         throw ParseException("huh?");
     }
 
-    std::string atom_value;
-    atom_value = reader.next();
-    return types::ValuePtr(new types::Atom(atom_value));
+    std::string token = reader.next();
+    return type::string(token);
 }
 
-void read_list(Reader& reader, types::ValueVec* list, char closing_bracket)
+void read_list(Reader& reader, ValueVec* items, char closing_bracket)
 {
     while ( !reader.eof() && reader.peek() != std::string(1, closing_bracket) ) {
-        list->push_back(read_form(reader));
+        items->push_back(read_form(reader));
     }
 
     if ( reader.eof() ) {
