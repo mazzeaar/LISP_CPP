@@ -49,9 +49,9 @@ private:
     std::string::const_iterator m_end;
 };
 
-types::ValuePtr read_atom(Reader& reader);
-types::ValuePtr read_form(Reader& reader);
-types::ValuePtr tokenize_string(const std::string& input);
-void read_list(Reader& reader, types::ValueVec* items, char closing_bracket);
+ValuePtr read_atom(Reader& reader);
+ValuePtr read_form(Reader& reader);
+ValuePtr tokenize_string(const std::string& input);
+void read_list(Reader& reader, ValueVec* items, char closing_bracket);
 
 #endif // READER_H
