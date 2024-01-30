@@ -58,6 +58,11 @@ namespace type {
         return ValuePtr(new Hash(map));
     }
 
+    ValuePtr hash(ValueVec* items, bool isEvaluated)
+    {
+        return hash(items->begin(), items->end(), isEvaluated);
+    }
+
     ValuePtr vector(ValueVec* items)
     {
         return ValuePtr(new Vector(items));

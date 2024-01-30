@@ -2,6 +2,7 @@
 #define TYPES_H
 
 #include "../include/type_base.h"
+#include "../include/utils.h"
 #include <vector>
 #include <iostream>
 #include <map>
@@ -132,7 +133,7 @@ public:
 
     virtual const std::string toString(bool readably) const
     {
-        return value();
+        return readably ? escape(value()) : value();
     }
 
     virtual bool operator==(const Expression* rhs) const
@@ -343,29 +344,36 @@ class BuiltIn : public Applicable { };
 class Lambda : public Applicable { };
 
 namespace type {
+    // ValuePtr builtin(const String& name, BuiltIn::ApplyFunc handler);
+    // ValuePtr lambda(const std::vector<std::string>&, ValuePtr, malEnvPtr);
+
+
+    ValuePtr macro(const Lambda& lambda);
     ValuePtr error(ParseException& error);
     ValuePtr atom(ValuePtr value);
-    ValuePtr boolean(bool value);
-    // ValuePtr builtin(const String& name, BuiltIn::ApplyFunc handler);
-    ValuePtr falseValue();
-    ValuePtr hash(ValueIter argsBegin, ValueIter argsEnd,
-                        bool isEvaluated);
-    // ValuePtr hash(const malHash::Map& map);
-    // ValuePtr hash(const std::map<std::String, ValuePtr>& map);
-    ValuePtr integer(int64_t value);
-    ValuePtr integer(const std::string& token);
+
+    ValuePtr symbol(const std::string& token);
     ValuePtr keyword(const std::string& token);
-    // ValuePtr lambda(const std::vector<std::string>&, ValuePtr, malEnvPtr);
+
+    ValuePtr falseValue();
+    ValuePtr nilValue();
+    ValuePtr trueValue();
+
+    ValuePtr boolean(bool value);
+    ValuePtr string(const std::string& token);
+    ValuePtr integer(const std::string& token);
+    ValuePtr integer(int64_t value);
+
+    ValuePtr hash(ValueIter argsBegin, ValueIter argsEnd, bool isEvaluated);
+    ValuePtr hash(const Hash::Map& map);
+    ValuePtr hash(ValueVec* items, bool isEvaluated);
+
     ValuePtr list(ValueVec* items);
     ValuePtr list(ValueIter begin, ValueIter end);
     ValuePtr list(ValuePtr a);
     ValuePtr list(ValuePtr a, ValuePtr b);
     ValuePtr list(ValuePtr a, ValuePtr b, ValuePtr c);
-    ValuePtr macro(const Lambda& lambda);
-    ValuePtr nilValue();
-    ValuePtr string(const std::string& token);
-    ValuePtr symbol(const std::string& token);
-    ValuePtr trueValue();
+
     ValuePtr vector(ValueVec* items);
     ValuePtr vector(ValueIter begin, ValueIter end);
 } // namespace type
