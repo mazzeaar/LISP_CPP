@@ -8,9 +8,9 @@ OBJDIR = obj
 .PHONY: all clean test all_test
 
 STEP1_OBJS := $(OBJDIR)/utils.o $(OBJDIR)/reader.o $(OBJDIR)/types.o
-STEP2_OBJS := $(STEP1_OBJS)
+STEP2_OBJS := $(STEP1_OBJS) $(OBJDIR)/environment.o
 
-all: clean step0_repl step1_read_print step2_eval
+all: clean step2_eval step1_read_print step0_repl
 
 step0_repl: $(OBJDIR)/step0_repl.o | $(BINDIR)
 	@echo "linking $@"

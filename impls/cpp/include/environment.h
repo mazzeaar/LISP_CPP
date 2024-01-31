@@ -1,15 +1,16 @@
 #ifndef ENVIRONMENT_H
 #define ENVIRONMENT_H
 
+#include "def.h"
 #include "type_base.h"
 #include "types.h"
 
-class Env;
-typedef RefCountedPtr<Env> EnvPtr;
+#include <map>
+#include <string>
 
 class Env : public ReferenceCounter {
 public:
-    Env::Env(EnvPtr outer = NULL) : m_outer(outer) { }
+    Env(EnvPtr outer = NULL) : m_outer(outer) { }
     Env(EnvPtr outer,
            const std::vector<std::string>& bindings,
            ValueIter argsBegin, ValueIter argsEnd);

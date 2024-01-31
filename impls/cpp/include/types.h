@@ -3,15 +3,12 @@
 
 #include "type_base.h"
 #include "utils.h"
+#include "def.h"
+#include "environment.h"
 
 #include <vector>
 #include <iostream>
 #include <map>
-
-class Expression;
-typedef RefCountedPtr<Expression>   ValuePtr;
-typedef std::vector<ValuePtr>       ValueVec;
-typedef ValueVec::iterator          ValueIter;
 
 class EmptyInputException : public std::exception { };
 class ParseException : public std::exception {
@@ -36,8 +33,12 @@ public:
     Expression(ValuePtr ptr) : m_meta(ptr) { /* add logging */ }
     virtual ~Expression() { /* add logging */ }
 
-    virtual const std::string toString(bool readably) const = 0;
     bool isEqualTo(const Expression* rhs) const;
+    bool isTrue() const;
+
+    virtual ValuePtr eval(EnvPtr env);
+
+    virtual const std::string toString(bool readably) const = 0;
 
     friend std::ostream& operator<<(std::ostream& os, const Expression& ex)
     {
@@ -127,6 +128,7 @@ public:
     Symbol(const std::string& token) : StringBase(token) { }
     Symbol(const Symbol& that, ValuePtr meta) : StringBase(that, meta) { }
 
+    ValuePtr eval(EnvPtr env) override;
     bool operator==(const Expression* rhs) const override;
 };
 
@@ -144,11 +146,18 @@ public:
     bool isEmpty() const { return m_items->empty(); }
     ValuePtr operator[](int index) const { return (*m_items)[index]; }
 
+    virtual ValueVec* evalItems(EnvPtr env) const;
+
     ValueIter begin() const { return m_items->begin(); }
     ValueIter end() const { return m_items->end(); }
 
     virtual const std::string toString(bool readably) const override;
     bool operator==(const Expression* rhs) const override;
+
+    virtual ValuePtr conj(ValueIter argsBegin, ValueIter argsEnd) const = 0;
+
+    ValuePtr first() const;
+    virtual ValuePtr rest() const;
 
 private:
     ValueVec* const m_items;
@@ -160,6 +169,8 @@ public:
     List(ValueIter begin, ValueIter end) : Sequence(begin, end) { }
     List(const List& that, ValuePtr meta) : Sequence(that, meta) { }
 
+    virtual ValuePtr eval(EnvPtr env) override;
+    virtual ValuePtr conj(ValueIter argsBegin, ValueIter argsEnd) const override;
     const std::string toString(bool readably) const override;
 };
 
@@ -169,6 +180,8 @@ public:
     Vector(ValueIter begin, ValueIter end) : Sequence(begin, end) { }
     Vector(const List& that, ValuePtr meta) : Sequence(that, meta) { }
 
+    ValuePtr eval(EnvPtr env) override;
+    virtual ValuePtr conj(ValueIter argsBegin, ValueIter argsEnd) const override;
     const std::string toString(bool readably) const override;
 };
 
@@ -184,6 +197,15 @@ public:
         : Expression(meta), m_map(that.m_map), m_isEval(that.m_isEval)
     { }
 
+    ValuePtr assoc(ValueIter argsBegin, ValueIter argsEnd) const;
+    ValuePtr dissoc(ValueIter argsBegin, ValueIter argsEnd) const;
+    bool contains(ValuePtr key) const;
+
+    ValuePtr eval(EnvPtr env) override;
+    ValuePtr get(ValuePtr key) const;
+    ValuePtr keys() const;
+    ValuePtr values() const;
+
     static std::string makeHashKey(ValuePtr key);
     static Hash::Map addToMap(Hash::Map& map, ValueIter begin, ValueIter end);
     static Hash::Map createMap(ValueIter begin, ValueIter end);
@@ -196,14 +218,50 @@ private:
     const bool m_isEval;
 };
 
-class Applicable : public Expression { };
-class BuiltIn : public Applicable { };
+class Applicable : public Expression {
+public:
+    Applicable() { }
+    Applicable(ValuePtr meta) : Expression(meta) { }
+
+    virtual ValuePtr apply(ValueIter begin, ValueIter end) const = 0;
+};
+
+class BuiltIn : public Applicable {
+public:
+    typedef ValuePtr(ApplyFunc)(const std::string& name,
+                        ValueIter argsBegin, ValueIter argsEnd);
+
+    BuiltIn(const std::string& name, ApplyFunc* handler)
+        : m_name(name), m_handler(handler)
+    { }
+
+    BuiltIn(const BuiltIn& that, ValuePtr meta)
+        : Applicable(meta), m_name(that.m_name), m_handler(that.m_handler)
+    { }
+
+    virtual ValuePtr apply(ValueIter argsBegin, ValueIter argsEnd) const;
+
+    const std::string toString(bool readably) const
+    {
+        return "#builtin-function(" + m_name + ")";
+    }
+
+    bool operator==(const Expression* rhs) const
+    {
+        return this == rhs;
+    }
+
+private:
+    const std::string m_name;
+    ApplyFunc* m_handler;
+};
+
 class Lambda : public Applicable { };
 
 namespace type {
-    // ValuePtr builtin(const String& name, BuiltIn::ApplyFunc handler);
     // ValuePtr lambda(const std::vector<std::string>&, ValuePtr, malEnvPtr);
 
+    ValuePtr builtin(const std::string& name, BuiltIn::ApplyFunc handler);
     ValuePtr macro(const Lambda& lambda);
     ValuePtr atom(ValuePtr value);
 

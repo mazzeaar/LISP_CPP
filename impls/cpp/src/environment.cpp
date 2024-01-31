@@ -4,7 +4,7 @@
 Env::Env(EnvPtr outer,
        const std::vector<std::string>& bindings,
        ValueIter argsBegin, ValueIter argsEnd)
-    :m_outer(outer)
+    : m_outer(outer)
 {
     const int n = bindings.size();
     ValueIter it = argsBegin;
@@ -25,7 +25,6 @@ Env::Env(EnvPtr outer,
 
 ValuePtr Env::get(const std::string& symbol)
 {
-
     for ( EnvPtr env = this; env; env = env->m_outer ) {
         auto it = env->m_map.find(symbol);
         if ( it != env->m_map.end() ) {
@@ -33,7 +32,7 @@ ValuePtr Env::get(const std::string& symbol)
         }
     }
 
-    FAIL("'%s' not found", symbol.c_str());
+    throw symbol + " not found!";
 }
 
 EnvPtr Env::find(const std::string& symbol)

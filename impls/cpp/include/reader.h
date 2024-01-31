@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "types.h"
+#include "def.h"
 #include "utils.h"
 
 static const std::regex TOKEN_REGEXES[] = {

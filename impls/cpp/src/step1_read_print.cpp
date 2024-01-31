@@ -1,8 +1,9 @@
 #include <iostream>
 #include <string>
 
-#include "../include/reader.h"
-#include "../include/types.h"
+#include "reader.h"
+#include "types.h"
+#include "def.h"
 
 ValuePtr READ(const std::string& input);
 ValuePtr EVAL(ValuePtr tokens);

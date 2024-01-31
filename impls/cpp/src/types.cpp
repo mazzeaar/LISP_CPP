@@ -3,9 +3,13 @@
 #include <cassert>
 
 namespace type {
-    // ValuePtr builtin(const String& name, BuiltIn::ApplyFunc handler);
     // ValuePtr lambda(const std::vector<std::string>&, ValuePtr, malEnvPtr);
     // ValuePtr macro(const Lambda& lambda);
+
+    ValuePtr builtin(const std::string& name, BuiltIn::ApplyFunc handler)
+    {
+        return ValuePtr(new BuiltIn(name, handler));
+    }
 
     ValuePtr boolean(bool value)
     {
@@ -130,6 +134,17 @@ bool Expression::isEqualTo(const Expression* rhs) const
     return types_match && (this == rhs);
 }
 
+bool Expression::isTrue() const
+{
+    return (this != type::falseValue().ptr() && this != type::nilValue().ptr());
+}
+
+ValuePtr Expression::eval(EnvPtr env)
+{
+    return ValuePtr(this);
+}
+
+
 // ================================
 // ATOM
 const std::string Atom::toString(bool readably) const
@@ -143,7 +158,7 @@ bool Atom::operator==(const Expression* rhs) const
 }
 
 // ================================
-// Constant
+// CONSTANT
 const std::string Constant::toString(bool readably) const
 {
     return m_name;
@@ -223,6 +238,29 @@ bool Sequence::operator==(const Expression* rhs) const
     return true;
 }
 
+ValueVec* Sequence::evalItems(EnvPtr env) const
+{
+    ValueVec* items = new ValueVec;;
+    items->reserve(count());
+    for ( auto it = m_items->begin(), end = m_items->end(); it != end; ++it ) {
+        items->push_back((*it)->eval(env));
+    }
+
+    return items;
+}
+
+ValuePtr Sequence::first() const
+{
+    return count() == 0 ? type::nilValue() : (*m_items)[0];
+}
+
+ValuePtr Sequence::rest() const
+{
+    ValueIter start = (count() > 0) ? begin() + 1 : end();
+    return type::list(start, end());
+}
+
+
 // ================================
 // KEYWORD
 bool Keyword::operator==(const Expression* rhs) const
@@ -237,6 +275,11 @@ bool Symbol::operator==(const Expression* rhs) const
     return value() == static_cast<const Symbol*>(rhs)->value();
 }
 
+ValuePtr Symbol::eval(EnvPtr env)
+{
+    return env->get(value());
+}
+
 // ================================
 // LIST
 const std::string List::toString(bool readably) const
@@ -244,11 +287,63 @@ const std::string List::toString(bool readably) const
     return '(' + Sequence::toString(readably) + ')';
 }
 
+ValuePtr List::eval(EnvPtr env)
+{
+    if ( count() == 0 ) {
+        return ValuePtr(this);
+    }
+
+    auto APPLY = [ ] (ValuePtr op, ValueIter begin, ValueIter end)
+    {
+        const Applicable* handler = dynamic_cast<Applicable*>(op.ptr());
+
+        if ( handler == NULL ) {
+            throw "handler is NULL";
+        }
+
+        return handler->apply(begin, end);
+    };
+
+    std::unique_ptr<ValueVec> items(evalItems(env));
+    auto it = items->begin();
+    ValuePtr op = *it;
+    return APPLY(op, ++it, items->end());
+}
+
+ValuePtr List::conj(ValueIter argsBegin, ValueIter argsEnd) const
+{
+    int oldItemCount = std::distance(begin(), end());
+    int newItemCount = std::distance(argsBegin, argsEnd);
+
+    ValueVec* items = new ValueVec(oldItemCount + newItemCount);
+    std::reverse_copy(argsBegin, argsEnd, items->begin());
+    std::copy(begin(), end(), items->begin() + newItemCount);
+
+    return type::list(items);
+}
+
 // ================================
 // VECTOR
 const std::string Vector::toString(bool readably) const
 {
     return '[' + Sequence::toString(readably) + ']';
+}
+
+ValuePtr Vector::eval(EnvPtr env)
+{
+    return type::vector(evalItems(env));
+}
+
+ValuePtr Vector::conj(ValueIter begin_iter, ValueIter end_iter) const
+{
+    int oldItemCount = std::distance(begin(), end());
+    int newItemCount = std::distance(begin_iter, end_iter);
+
+    ValueVec* items = new ValueVec(oldItemCount + newItemCount);
+    std::copy(begin(), end(), items->begin());
+    std::copy(begin_iter, end_iter, items->begin() + oldItemCount);
+
+    return type::vector(items);
 }
 
 // ================================
@@ -326,4 +421,82 @@ bool Hash::operator==(const Expression* rhs) const
     }
 
     return true;
+}
+
+ValuePtr Hash::assoc(ValueIter begin, ValueIter end) const
+{
+    if ( std::distance(begin, end) % 2 != 0 ) {
+        throw "assoc requires even-sized lists";
+    }
+    Hash::Map map(m_map);
+    return type::hash(addToMap(map, begin, end));
+}
+
+ValuePtr Hash::dissoc(ValueIter begin, ValueIter end) const
+{
+    Hash::Map map(m_map);
+    for ( auto it = begin; it != end; ++it ) {
+        std::string key = makeHashKey(*it);
+        map.erase(key);
+    }
+
+    return type::hash(map);
+}
+
+bool Hash::contains(ValuePtr key) const
+{
+    return m_map.find(makeHashKey(key)) != m_map.end();
+}
+
+ValuePtr Hash::eval(EnvPtr env)
+{
+    if ( m_isEval ) {
+        return ValuePtr(this);
+    }
+
+    Hash::Map map;
+
+    for ( auto it = m_map.begin(), end = m_map.end(); it != end; ++it ) {
+        map[it->first] = (it->second)->eval(env);
+    }
+    return type::hash(map);
+}
+
+ValuePtr Hash::get(ValuePtr key) const
+{
+    auto it = m_map.find(makeHashKey(key));
+    return it == m_map.end() ? type::nilValue() : it->second;
+}
+
+ValuePtr Hash::keys() const
+{
+    ValueVec* keys = new ValueVec();
+    keys->reserve(m_map.size());
+    for ( auto it = m_map.begin(), end = m_map.end(); it != end; ++it ) {
+        if ( it->first[0] == '"' ) {
+            keys->push_back(type::string(unescape(it->first)));
+        }
+        else {
+            keys->push_back(type::keyword(it->first));
+        }
+    }
+    return type::list(keys);
+}
+
+ValuePtr Hash::values() const
+{
+    ValueVec* keys = new ValueVec();
+    keys->reserve(m_map.size());
+    for ( auto it = m_map.begin(), end = m_map.end(); it != end; ++it ) {
+        keys->push_back(it->second);
+    }
+    return type::list(keys);
+}
+
+
+// ================================
+// BUILTIN
+ValuePtr BuiltIn::apply(ValueIter argsBegin, ValueIter argsEnd) const
+{
+    return m_handler(m_name, argsBegin, argsEnd);
 }

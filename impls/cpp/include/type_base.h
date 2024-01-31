@@ -4,8 +4,6 @@
 #include <iostream>
 #include <memory>
 #include <string>
-
-
 class ReferenceCounter {
 public:
     ReferenceCounter() : m_count(size_t(0)) { }
