@@ -26,12 +26,14 @@ class RefCountedPtr {
 public:
     RefCountedPtr() : m_object(0) { }
 
-    RefCountedPtr(T* object) : m_object(0)
+    RefCountedPtr(T* object)
+        : m_object(0)
     {
         acquire(object);
     }
 
-    RefCountedPtr(const RefCountedPtr& rhs) : m_object(0)
+    RefCountedPtr(const RefCountedPtr& rhs)
+        : m_object(0)
     {
         acquire(rhs.m_object);
     }

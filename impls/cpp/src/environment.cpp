@@ -3,11 +3,11 @@
 
 Env::Env(EnvPtr outer,
        const std::vector<std::string>& bindings,
-       ValueIter argsBegin, ValueIter argsEnd)
-    : m_outer(outer)
+       AST_iter argsBegin, AST_iter argsEnd)
+    : m_outer_env(outer)
 {
     const int n = bindings.size();
-    ValueIter it = argsBegin;
+    AST_iter it = argsBegin;
 
     for ( int i = 0; i < n; ++i ) {
         if ( bindings[i] == "&" ) {
@@ -23,21 +23,21 @@ Env::Env(EnvPtr outer,
     assert(it == argsEnd && "Too many parameters");
 }
 
-ValuePtr Env::get(const std::string& symbol)
+AST Env::get(const std::string& symbol)
 {
-    for ( EnvPtr env = this; env; env = env->m_outer ) {
+    for ( EnvPtr env = this; env; env = env->m_outer_env ) {
         auto it = env->m_map.find(symbol);
         if ( it != env->m_map.end() ) {
             return it->second;
         }
     }
 
-    throw symbol + " not found!";
+    throw LISP_ERROR(symbol, " not found!");
 }
 
 EnvPtr Env::find(const std::string& symbol)
 {
-    for ( EnvPtr env = this; env; env = env->m_outer ) {
+    for ( EnvPtr env = this; env; env = env->m_outer_env ) {
         if ( env->m_map.find(symbol) != env->m_map.end() ) {
             return env;
         }
@@ -46,7 +46,7 @@ EnvPtr Env::find(const std::string& symbol)
     return NULL;
 }
 
-ValuePtr Env::set(const std::string& symbol, ValuePtr value)
+AST Env::set(const std::string& symbol, AST value)
 {
     m_map[symbol] = value;
     return value;
@@ -54,11 +54,11 @@ ValuePtr Env::set(const std::string& symbol, ValuePtr value)
 
 EnvPtr Env::getRoot()
 {
-    for ( EnvPtr env = this; env; env = env->m_outer ) {
-        if ( !env->m_outer ) {
+    for ( EnvPtr env = this; env; env = env->m_outer_env ) {
+        if ( !env->m_outer_env ) {
             return env;
         }
     }
 
-    throw std::string("this should never ever happen - env has no root");
+    throw LISP_ERROR("this should never ever happen - env has no root");
 }

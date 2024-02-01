@@ -1,13 +1,14 @@
 #include <iostream>
 #include <string>
 
-#include "reader.h"
+#include "parser.h"
 #include "types.h"
 #include "def.h"
+#include "environment.h"
 
-ValuePtr READ(const std::string& input);
-ValuePtr EVAL(ValuePtr tokens);
-std::string PRINT(ValuePtr tokens);
+AST READ(const std::string& input);
+AST EVAL(AST tokens);
+std::string PRINT(AST tokens);
 std::string REP(const std::string& param);
 
 bool read_line(const std::string& prompt, std::string& line)
@@ -35,8 +36,8 @@ int main()
         catch ( EmptyInputException& e ) {
             continue;
         }
-        catch ( ParseException& e ) {
-            out = e.what();
+        catch ( std::string& s ) {
+            out = s;
         }
 
         std::cout << out << std::endl;
@@ -45,17 +46,17 @@ int main()
     return 0;
 }
 
-ValuePtr READ(const std::string& input)
+AST READ(const std::string& input)
 {
     return tokenize_string(input);
 }
 
-ValuePtr EVAL(ValuePtr tokens)
+AST EVAL(AST tokens)
 {
     return tokens;
 }
 
-std::string PRINT(ValuePtr tokens)
+std::string PRINT(AST tokens)
 {
     return tokens->toString(true);
 }

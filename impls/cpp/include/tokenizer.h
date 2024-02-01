@@ -1,14 +1,9 @@
-#ifndef READER_H
-#define READER_H
+#ifndef TOKENIZER_H
+#define TOKENIZER_H
 
 #include <cassert>
 #include <string>
 #include <regex>
-#include <memory>
-
-#include "types.h"
-#include "def.h"
-#include "utils.h"
 
 static const std::regex TOKEN_REGEXES[] = {
     std::regex("~@"),
@@ -17,23 +12,23 @@ static const std::regex TOKEN_REGEXES[] = {
     std::regex("[^\\s\\[\\]{}('\"`,;)]+"),
 };
 
-class Reader {
+class Tokeniser {
 public:
-    Reader(const std::string& line)
+    Tokeniser(const std::string& line)
         : m_iter(line.begin()), m_end(line.end())
     {
         nextToken();
     }
 
-    std::string peek() const
+    inline std::string peek() const
     {
-        assert(!eof() && "Reader::peek() reading past EOF\n");
+        assert(!eof() && "Tokeniser::peek() reading past EOF\n");
         return m_token;
     }
 
-    std::string next()
+    inline std::string next()
     {
-        assert(!eof() && "Reader::next() reading past EOF\n");
+        assert(!eof() && "Tokeniser::next() reading past EOF\n");
         std::string token = peek();
         nextToken();
         return token;
@@ -51,10 +46,4 @@ private:
     std::string::const_iterator m_end;
 };
 
-ValuePtr read_atom(Reader& reader);
-ValuePtr read_form(Reader& reader);
-void read_list(Reader& reader, ValueVec* items, char closing_bracket);
-ValuePtr process_macro(Reader& reader, const std::string& symbol);
-ValuePtr tokenize_string(const std::string& input);
-
-#endif // READER_H
+#endif // TOKENIZER_H

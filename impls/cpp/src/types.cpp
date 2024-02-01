@@ -1,128 +1,129 @@
-#include "../include/types.h"
+#include "types.h"
 
 #include <cassert>
 
 namespace type {
-    // ValuePtr lambda(const std::vector<std::string>&, ValuePtr, malEnvPtr);
-    // ValuePtr macro(const Lambda& lambda);
+    // AST lambda(const std::vector<std::string>&, AST, malEnvPtr);
+    // AST macro(const Lambda& lambda);
 
-    ValuePtr builtin(const std::string& name, BuiltIn::ApplyFunc handler)
+    AST builtin(const std::string& name, BuiltIn::ApplyFunc handler)
     {
-        return ValuePtr(new BuiltIn(name, handler));
+        return AST(new BuiltIn(name, handler));
     }
 
-    ValuePtr boolean(bool value)
+    AST boolean(bool value)
     {
         return value ? trueValue() : falseValue();
     }
 
-    ValuePtr integer(int64_t value)
+    AST integer(int64_t value)
     {
-        return ValuePtr(new Integer(value));
+        return AST(new Integer(value));
     }
 
-    ValuePtr integer(const std::string& token)
+    AST integer(const std::string& token)
     {
         return integer(std::stoi(token));
     }
 
-    ValuePtr keyword(const std::string& token)
+    AST keyword(const std::string& token)
     {
-        return ValuePtr(new Keyword(token));
+        return AST(new Keyword(token));
     }
 
-    ValuePtr symbol(const std::string& token)
+    AST symbol(const std::string& token)
     {
-        return ValuePtr(new Symbol(token));
+        return AST(new Symbol(token));
     }
 
-    ValuePtr falseValue()
+    AST falseValue()
     {
-        static ValuePtr False(new Constant("false"));
-        return ValuePtr(False);
+        static AST False(new Constant("false"));
+        return AST(False);
     }
 
-    ValuePtr nilValue()
+    AST nilValue()
     {
-        static ValuePtr True(new Constant("nil"));
-        return ValuePtr(True);
+        static AST True(new Constant("nil"));
+        return AST(True);
     }
 
-    ValuePtr trueValue()
+    AST trueValue()
     {
-        static ValuePtr Nil(new Constant("true"));
-        return ValuePtr(Nil);
+        static AST Nil(new Constant("true"));
+        return AST(Nil);
     }
 
-    ValuePtr hash(ValueIter begin, ValueIter end, bool isEvaluated)
+    AST hash(AST_iter begin, AST_iter end, bool isEvaluated)
     {
-        return ValuePtr(new Hash(begin, end, isEvaluated));
+        return AST(new Hash(begin, end, isEvaluated));
     }
 
-    ValuePtr hash(const Hash::Map& map)
+    AST hash(const Hash::Map& map)
     {
-        return ValuePtr(new Hash(map));
+        return AST(new Hash(map));
     }
 
-    ValuePtr hash(ValueVec* items, bool isEvaluated)
+    AST hash(AST_vec* items, bool isEvaluated)
     {
         return hash(items->begin(), items->end(), isEvaluated);
     }
 
-    ValuePtr vector(ValueVec* items)
+    AST vector(AST_vec* items)
     {
-        return ValuePtr(new Vector(items));
+        return AST(new Vector(items));
     }
 
-    ValuePtr vector(ValueIter begin, ValueIter end)
+    AST vector(AST_iter begin, AST_iter end)
     {
-        return ValuePtr(new Vector(begin, end));
+        return AST(new Vector(begin, end));
     }
 
-    ValuePtr atom(ValuePtr value)
+    AST atom(AST value)
     {
-        return ValuePtr(new Atom(value));
+        return AST(new Atom(value));
     }
 
-    ValuePtr list(ValueVec* items)
+    AST list(AST_vec* items)
     {
-        return ValuePtr(new List(items));
+        return AST(new List(items));
     }
 
-    ValuePtr list(ValueIter begin, ValueIter end)
+    AST list(AST_iter begin, AST_iter end)
     {
-        return ValuePtr(new List(begin, end));
+        return AST(new List(begin, end));
     }
 
-    ValuePtr list(ValuePtr a)
+    AST list(AST a)
     {
-        ValueVec* items = new ValueVec(1);
+        AST_vec* items = new AST_vec(1);
         items->at(0) = a;
-        return ValuePtr(new List(items));
+        return AST(new List(items));
     }
 
-    ValuePtr list(ValuePtr a, ValuePtr b)
+    AST list(AST a, AST b)
     {
-        ValueVec* items = new ValueVec(2);
+        AST_vec* items = new AST_vec(2);
         items->at(0) = a;
         items->at(1) = b;
-        return ValuePtr(new List(items));
+        return AST(new List(items));
     }
 
-    ValuePtr list(ValuePtr a, ValuePtr b, ValuePtr c)
+    AST list(AST a, AST b, AST c)
     {
-        ValueVec* items = new ValueVec(3);
+        AST_vec* items = new AST_vec(3);
         items->at(0) = a;
         items->at(1) = b;
         items->at(2) = c;
-        return ValuePtr(new List(items));
+        return AST(new List(items));
     }
 
-    ValuePtr string(const std::string& token)
+    AST string(const std::string& token)
     {
-        return ValuePtr(new String(token));
+        return AST(new String(token));
     }
 } // namespace type
+
 
 // ================================
 // EXPRESSION
@@ -139,9 +140,9 @@ bool Expression::isTrue() const
     return (this != type::falseValue().ptr() && this != type::nilValue().ptr());
 }
 
-ValuePtr Expression::eval(EnvPtr env)
+AST Expression::eval(EnvPtr env)
 {
-    return ValuePtr(this);
+    return AST(this);
 }
 
 
@@ -157,6 +158,7 @@ bool Atom::operator==(const Expression* rhs) const
     return this->m_atom->isEqualTo(rhs);
 }
 
+
 // ================================
 // CONSTANT
 const std::string Constant::toString(bool readably) const
@@ -168,6 +170,7 @@ bool Constant::operator==(const Expression* rhs) const
 {
     return this == rhs;
 }
+
 
 // ================================
 // INTEGER
@@ -181,6 +184,7 @@ const std::string Integer::toString(bool readably) const
     return std::to_string(m_val);
 }
 
+
 // ================================
 // STRING
 const std::string String::toString(bool readably) const
@@ -193,13 +197,14 @@ bool String::operator==(const Expression* rhs) const
     return value() == static_cast<const String*>(rhs)->value();
 }
 
+
 // ================================
 // SEQUENCE
 const std::string Sequence::toString(bool readably) const
 {
     std::string res;
-    ValueVec::const_iterator iter = m_items->cbegin();
-    ValueVec::const_iterator end = m_items->cend();
+    AST_vec::const_iterator iter = m_items->cbegin();
+    AST_vec::const_iterator end = m_items->cend();
 
     if ( iter != end ) {
         res += (*iter)->toString(readably);
@@ -223,7 +228,7 @@ bool Sequence::operator==(const Expression* rhs) const
         return false;
     }
 
-    ValueIter this_it = m_items->begin(),
+    AST_iter this_it = m_items->begin(),
         rhs_it = rhs_seq->begin(),
         end = m_items->end();
     while ( this_it != end ) {
@@ -238,9 +243,9 @@ bool Sequence::operator==(const Expression* rhs) const
     return true;
 }
 
-ValueVec* Sequence::evalItems(EnvPtr env) const
+AST_vec* Sequence::evalItems(EnvPtr env) const
 {
-    ValueVec* items = new ValueVec;;
+    AST_vec* items = new AST_vec;;
     items->reserve(count());
     for ( auto it = m_items->begin(), end = m_items->end(); it != end; ++it ) {
         items->push_back((*it)->eval(env));
@@ -249,14 +254,14 @@ ValueVec* Sequence::evalItems(EnvPtr env) const
     return items;
 }
 
-ValuePtr Sequence::first() const
+AST Sequence::first() const
 {
     return count() == 0 ? type::nilValue() : (*m_items)[0];
 }
 
-ValuePtr Sequence::rest() const
+AST Sequence::rest() const
 {
-    ValueIter start = (count() > 0) ? begin() + 1 : end();
+    AST_iter start = (count() > 0) ? begin() + 1 : end();
     return type::list(start, end());
 }
 
@@ -268,6 +273,7 @@ bool Keyword::operator==(const Expression* rhs) const
     return value() == static_cast<const Keyword*>(rhs)->value();
 }
 
+
 // ================================
 // SYMBOL
 bool Symbol::operator==(const Expression* rhs) const
@@ -275,10 +281,11 @@ bool Symbol::operator==(const Expression* rhs) const
     return value() == static_cast<const Symbol*>(rhs)->value();
 }
 
-ValuePtr Symbol::eval(EnvPtr env)
+AST Symbol::eval(EnvPtr env)
 {
     return env->get(value());
 }
+
 
 // ================================
 // LIST
@@ -287,13 +294,13 @@ const std::string List::toString(bool readably) const
     return '(' + Sequence::toString(readably) + ')';
 }
 
-ValuePtr List::eval(EnvPtr env)
+AST List::eval(EnvPtr env)
 {
     if ( count() == 0 ) {
-        return ValuePtr(this);
+        return AST(this);
     }
 
-    auto APPLY = [ ] (ValuePtr op, ValueIter begin, ValueIter end)
+    auto APPLY = [ ] (AST op, AST_iter begin, AST_iter end)
     {
         const Applicable* handler = dynamic_cast<Applicable*>(op.ptr());
 
@@ -304,23 +311,24 @@ ValuePtr List::eval(EnvPtr env)
         return handler->apply(begin, end);
     };
 
-    std::unique_ptr<ValueVec> items(evalItems(env));
+    std::unique_ptr<AST_vec> items(evalItems(env));
     auto it = items->begin();
-    ValuePtr op = *it;
+    AST op = *it;
     return APPLY(op, ++it, items->end());
 }
 
-ValuePtr List::conj(ValueIter argsBegin, ValueIter argsEnd) const
+AST List::conj(AST_iter argsBegin, AST_iter argsEnd) const
 {
     int oldItemCount = std::distance(begin(), end());
     int newItemCount = std::distance(argsBegin, argsEnd);
 
-    ValueVec* items = new ValueVec(oldItemCount + newItemCount);
+    AST_vec* items = new AST_vec(oldItemCount + newItemCount);
     std::reverse_copy(argsBegin, argsEnd, items->begin());
     std::copy(begin(), end(), items->begin() + newItemCount);
 
     return type::list(items);
 }
+
 
 // ================================
 // VECTOR
@@ -329,26 +337,27 @@ const std::string Vector::toString(bool readably) const
     return '[' + Sequence::toString(readably) + ']';
 }
 
-ValuePtr Vector::eval(EnvPtr env)
+AST Vector::eval(EnvPtr env)
 {
     return type::vector(evalItems(env));
 }
 
-ValuePtr Vector::conj(ValueIter begin_iter, ValueIter end_iter) const
+AST Vector::conj(AST_iter begin_iter, AST_iter end_iter) const
 {
     int oldItemCount = std::distance(begin(), end());
     int newItemCount = std::distance(begin_iter, end_iter);
 
-    ValueVec* items = new ValueVec(oldItemCount + newItemCount);
+    AST_vec* items = new AST_vec(oldItemCount + newItemCount);
     std::copy(begin(), end(), items->begin());
     std::copy(begin_iter, end_iter, items->begin() + oldItemCount);
 
     return type::vector(items);
 }
 
+
 // ================================
 // HASH
-std::string Hash::makeHashKey(ValuePtr key)
+std::string Hash::makeHashKey(AST key)
 {
     if ( const String* skey = dynamic_cast<String*>(key.ptr()) ) {
         return skey->toString(true);
@@ -360,9 +369,9 @@ std::string Hash::makeHashKey(ValuePtr key)
     throw std::string("not a string or keyword");
 }
 
-Hash::Map Hash::addToMap(Hash::Map& map, ValueIter begin, ValueIter end)
+Hash::Map Hash::addToMap(Hash::Map& map, AST_iter begin, AST_iter end)
 {
-    for ( ValueIter it = begin; it != end; ++it ) {
+    for ( AST_iter it = begin; it != end; ++it ) {
         std::string key = makeHashKey(*it++);
         map[key] = *it;
     }
@@ -370,7 +379,7 @@ Hash::Map Hash::addToMap(Hash::Map& map, ValueIter begin, ValueIter end)
     return map;
 }
 
-Hash::Map Hash::createMap(ValueIter begin, ValueIter end)
+Hash::Map Hash::createMap(AST_iter begin, AST_iter end)
 {
     assert(std::distance(begin, end) % 2 == 0 && "hash map must be even sized!\n");
     Hash::Map map;
@@ -423,7 +432,7 @@ bool Hash::operator==(const Expression* rhs) const
     return true;
 }
 
-ValuePtr Hash::assoc(ValueIter begin, ValueIter end) const
+AST Hash::assoc(AST_iter begin, AST_iter end) const
 {
     if ( std::distance(begin, end) % 2 != 0 ) {
         throw "assoc requires even-sized lists";
@@ -432,7 +441,7 @@ ValuePtr Hash::assoc(ValueIter begin, ValueIter end) const
     return type::hash(addToMap(map, begin, end));
 }
 
-ValuePtr Hash::dissoc(ValueIter begin, ValueIter end) const
+AST Hash::dissoc(AST_iter begin, AST_iter end) const
 {
     Hash::Map map(m_map);
     for ( auto it = begin; it != end; ++it ) {
@@ -443,15 +452,15 @@ ValuePtr Hash::dissoc(ValueIter begin, ValueIter end) const
     return type::hash(map);
 }
 
-bool Hash::contains(ValuePtr key) const
+bool Hash::contains(AST key) const
 {
     return m_map.find(makeHashKey(key)) != m_map.end();
 }
 
-ValuePtr Hash::eval(EnvPtr env)
+AST Hash::eval(EnvPtr env)
 {
     if ( m_isEval ) {
-        return ValuePtr(this);
+        return AST(this);
     }
 
     Hash::Map map;
@@ -462,15 +471,15 @@ ValuePtr Hash::eval(EnvPtr env)
     return type::hash(map);
 }
 
-ValuePtr Hash::get(ValuePtr key) const
+AST Hash::get(AST key) const
 {
     auto it = m_map.find(makeHashKey(key));
     return it == m_map.end() ? type::nilValue() : it->second;
 }
 
-ValuePtr Hash::keys() const
+AST Hash::keys() const
 {
-    ValueVec* keys = new ValueVec();
+    AST_vec* keys = new AST_vec();
     keys->reserve(m_map.size());
     for ( auto it = m_map.begin(), end = m_map.end(); it != end; ++it ) {
         if ( it->first[0] == '"' ) {
@@ -483,9 +492,9 @@ ValuePtr Hash::keys() const
     return type::list(keys);
 }
 
-ValuePtr Hash::values() const
+AST Hash::values() const
 {
-    ValueVec* keys = new ValueVec();
+    AST_vec* keys = new AST_vec();
     keys->reserve(m_map.size());
     for ( auto it = m_map.begin(), end = m_map.end(); it != end; ++it ) {
         keys->push_back(it->second);
@@ -496,7 +505,7 @@ ValuePtr Hash::values() const
 
 // ================================
 // BUILTIN
-ValuePtr BuiltIn::apply(ValueIter argsBegin, ValueIter argsEnd) const
+AST BuiltIn::apply(AST_iter argsBegin, AST_iter argsEnd) const
 {
     return m_handler(m_name, argsBegin, argsEnd);
 }

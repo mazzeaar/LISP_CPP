@@ -5,38 +5,24 @@
 #include "utils.h"
 #include "def.h"
 #include "environment.h"
+#include "lisp_error.h"
 
 #include <vector>
 #include <iostream>
 #include <map>
 
 class EmptyInputException : public std::exception { };
-class ParseException : public std::exception {
-public:
-    ParseException(const std::string& msg, const std::string& detail = "")
-        : m_msg(msg), m_detail(detail)
-    { }
-
-    virtual const char* what() const throw()
-    {
-        return m_msg.c_str();
-    }
-
-private:
-    std::string m_msg;
-    std::string m_detail;
-};
 
 class Expression : public ReferenceCounter {
 public:
     Expression() { /* add logging */ }
-    Expression(ValuePtr ptr) : m_meta(ptr) { /* add logging */ }
+    Expression(AST ptr) : m_meta(ptr) { /* add logging */ }
     virtual ~Expression() { /* add logging */ }
 
     bool isEqualTo(const Expression* rhs) const;
     bool isTrue() const;
 
-    virtual ValuePtr eval(EnvPtr env);
+    virtual AST eval(EnvPtr env);
 
     virtual const std::string toString(bool readably) const = 0;
 
@@ -47,13 +33,25 @@ public:
 
 protected:
     virtual bool operator==(const Expression* rhs) const = 0;
-    ValuePtr m_meta;
+    AST m_meta;
 };
+
+template<class T>
+T* value_cast(AST obj, const char* typeName)
+{
+    T* dest = dynamic_cast<T*>(obj.ptr());
+    if ( dest == NULL ) {
+        throw LISP_ERROR(obj->toString(true), " != ", std::string(typeName));
+    }
+    return dest;
+}
+
+#define VALUE_CAST(Type, Value) value_cast<Type>(Value, #Type)
 
 class Atom : public Expression {
 public:
-    Atom(ValuePtr value) : m_atom(value) { }
-    Atom(const Atom& that, ValuePtr meta)
+    Atom(AST value) : m_atom(value) { }
+    Atom(const Atom& that, AST meta)
         : Expression(meta), m_atom(that.m_atom)
     { }
 
@@ -61,13 +59,13 @@ public:
     bool operator==(const Expression* rhs) const;
 
 private:
-    ValuePtr m_atom;
+    AST m_atom;
 };
 
 class Constant : public Expression {
 public:
     Constant(const std::string& name) : m_name(name) { }
-    Constant(const Constant& that, ValuePtr meta)
+    Constant(const Constant& that, AST meta)
         : Expression(meta), m_name(that.m_name)
     { }
 
@@ -81,7 +79,7 @@ private:
 class Integer : public Expression {
 public:
     Integer(int64_t value) : m_val(value) { }
-    Integer(const Integer& that, ValuePtr meta)
+    Integer(const Integer& that, AST meta)
         : Expression(meta), m_val(that.m_val)
     { }
 
@@ -97,7 +95,7 @@ private:
 class StringBase : public Expression {
 public:
     StringBase(const std::string& token) : m_string(token) { }
-    StringBase(const StringBase& that, ValuePtr meta)
+    StringBase(const StringBase& that, AST meta)
         : Expression(meta), m_string(that.value())
     { }
 
@@ -110,7 +108,7 @@ private:
 class String : public StringBase {
 public:
     String(const std::string& token) : StringBase(token) { }
-    String(const String& that, ValuePtr meta) : StringBase(that, meta) { }
+    String(const String& that, AST meta) : StringBase(that, meta) { }
 
     const std::string toString(bool readably) const override;
     bool operator==(const Expression* rhs) const override;
@@ -119,96 +117,96 @@ public:
 class Keyword : public StringBase {
 public:
     Keyword(const std::string& token) : StringBase(token) { }
-    Keyword(const Keyword& that, ValuePtr meta) : StringBase(that, meta) { }
+    Keyword(const Keyword& that, AST meta) : StringBase(that, meta) { }
 
     bool operator==(const Expression* rhs) const override;
 };
 class Symbol : public StringBase {
 public:
     Symbol(const std::string& token) : StringBase(token) { }
-    Symbol(const Symbol& that, ValuePtr meta) : StringBase(that, meta) { }
+    Symbol(const Symbol& that, AST meta) : StringBase(that, meta) { }
 
-    ValuePtr eval(EnvPtr env) override;
+    AST eval(EnvPtr env) override;
     bool operator==(const Expression* rhs) const override;
 };
 
 class Sequence : public Expression {
 public:
-    Sequence(ValueVec* items) : m_items(items) { }
-    Sequence(ValueIter begin, ValueIter end) : m_items(new ValueVec(begin, end)) { }
-    Sequence(const Sequence& that, ValuePtr meta)
-        : Expression(meta), m_items(new ValueVec(*(that.m_items)))
+    Sequence(AST_vec* items) : m_items(items) { }
+    Sequence(AST_iter begin, AST_iter end) : m_items(new AST_vec(begin, end)) { }
+    Sequence(const Sequence& that, AST meta)
+        : Expression(meta), m_items(new AST_vec(*(that.m_items)))
     { }
 
     virtual ~Sequence() { delete m_items; }
 
     size_t count() const { return m_items->size(); }
     bool isEmpty() const { return m_items->empty(); }
-    ValuePtr operator[](int index) const { return (*m_items)[index]; }
+    AST operator[](int index) const { return (*m_items)[index]; }
 
-    virtual ValueVec* evalItems(EnvPtr env) const;
+    virtual AST_vec* evalItems(EnvPtr env) const;
 
-    ValueIter begin() const { return m_items->begin(); }
-    ValueIter end() const { return m_items->end(); }
+    AST_iter begin() const { return m_items->begin(); }
+    AST_iter end() const { return m_items->end(); }
 
     virtual const std::string toString(bool readably) const override;
     bool operator==(const Expression* rhs) const override;
 
-    virtual ValuePtr conj(ValueIter argsBegin, ValueIter argsEnd) const = 0;
+    virtual AST conj(AST_iter argsBegin, AST_iter argsEnd) const = 0;
 
-    ValuePtr first() const;
-    virtual ValuePtr rest() const;
+    AST first() const;
+    virtual AST rest() const;
 
 private:
-    ValueVec* const m_items;
+    AST_vec* const m_items;
 };
 
 class List : public Sequence {
 public:
-    List(ValueVec* items) : Sequence(items) { }
-    List(ValueIter begin, ValueIter end) : Sequence(begin, end) { }
-    List(const List& that, ValuePtr meta) : Sequence(that, meta) { }
+    List(AST_vec* items) : Sequence(items) { }
+    List(AST_iter begin, AST_iter end) : Sequence(begin, end) { }
+    List(const List& that, AST meta) : Sequence(that, meta) { }
 
-    virtual ValuePtr eval(EnvPtr env) override;
-    virtual ValuePtr conj(ValueIter argsBegin, ValueIter argsEnd) const override;
+    virtual AST eval(EnvPtr env) override;
+    virtual AST conj(AST_iter argsBegin, AST_iter argsEnd) const override;
     const std::string toString(bool readably) const override;
 };
 
 class Vector : public Sequence {
 public:
-    Vector(ValueVec* items) : Sequence(items) { }
-    Vector(ValueIter begin, ValueIter end) : Sequence(begin, end) { }
-    Vector(const List& that, ValuePtr meta) : Sequence(that, meta) { }
+    Vector(AST_vec* items) : Sequence(items) { }
+    Vector(AST_iter begin, AST_iter end) : Sequence(begin, end) { }
+    Vector(const List& that, AST meta) : Sequence(that, meta) { }
 
-    ValuePtr eval(EnvPtr env) override;
-    virtual ValuePtr conj(ValueIter argsBegin, ValueIter argsEnd) const override;
+    AST eval(EnvPtr env) override;
+    virtual AST conj(AST_iter argsBegin, AST_iter argsEnd) const override;
     const std::string toString(bool readably) const override;
 };
 
 class Hash : public Expression {
 public:
-    typedef std::map<std::string, ValuePtr> Map;
+    typedef std::map<std::string, AST> Map;
 
     Hash(const Hash::Map& map) : m_map(map), m_isEval(true) { }
-    Hash(ValueIter begin, ValueIter end, bool isEvaluated)
+    Hash(AST_iter begin, AST_iter end, bool isEvaluated)
         : m_map(createMap(begin, end)), m_isEval(isEvaluated)
     { }
-    Hash(const Hash& that, ValuePtr meta)
+    Hash(const Hash& that, AST meta)
         : Expression(meta), m_map(that.m_map), m_isEval(that.m_isEval)
     { }
 
-    ValuePtr assoc(ValueIter argsBegin, ValueIter argsEnd) const;
-    ValuePtr dissoc(ValueIter argsBegin, ValueIter argsEnd) const;
-    bool contains(ValuePtr key) const;
+    AST assoc(AST_iter argsBegin, AST_iter argsEnd) const;
+    AST dissoc(AST_iter argsBegin, AST_iter argsEnd) const;
+    bool contains(AST key) const;
 
-    ValuePtr eval(EnvPtr env) override;
-    ValuePtr get(ValuePtr key) const;
-    ValuePtr keys() const;
-    ValuePtr values() const;
+    AST eval(EnvPtr env) override;
+    AST get(AST key) const;
+    AST keys() const;
+    AST values() const;
 
-    static std::string makeHashKey(ValuePtr key);
-    static Hash::Map addToMap(Hash::Map& map, ValueIter begin, ValueIter end);
-    static Hash::Map createMap(ValueIter begin, ValueIter end);
+    static std::string makeHashKey(AST key);
+    static Hash::Map addToMap(Hash::Map& map, AST_iter begin, AST_iter end);
+    static Hash::Map createMap(AST_iter begin, AST_iter end);
 
     const std::string toString(bool readably) const override;
     bool operator==(const Expression* rhs) const override;
@@ -221,25 +219,25 @@ private:
 class Applicable : public Expression {
 public:
     Applicable() { }
-    Applicable(ValuePtr meta) : Expression(meta) { }
+    Applicable(AST meta) : Expression(meta) { }
 
-    virtual ValuePtr apply(ValueIter begin, ValueIter end) const = 0;
+    virtual AST apply(AST_iter begin, AST_iter end) const = 0;
 };
 
 class BuiltIn : public Applicable {
 public:
-    typedef ValuePtr(ApplyFunc)(const std::string& name,
-                        ValueIter argsBegin, ValueIter argsEnd);
+    typedef AST(ApplyFunc)(const std::string& name,
+                        AST_iter argsBegin, AST_iter argsEnd);
 
     BuiltIn(const std::string& name, ApplyFunc* handler)
         : m_name(name), m_handler(handler)
     { }
 
-    BuiltIn(const BuiltIn& that, ValuePtr meta)
+    BuiltIn(const BuiltIn& that, AST meta)
         : Applicable(meta), m_name(that.m_name), m_handler(that.m_handler)
     { }
 
-    virtual ValuePtr apply(ValueIter argsBegin, ValueIter argsEnd) const;
+    virtual AST apply(AST_iter argsBegin, AST_iter argsEnd) const;
 
     const std::string toString(bool readably) const
     {
@@ -259,36 +257,36 @@ private:
 class Lambda : public Applicable { };
 
 namespace type {
-    // ValuePtr lambda(const std::vector<std::string>&, ValuePtr, malEnvPtr);
+    // AST lambda(const std::vector<std::string>&, AST, malEnvPtr);
 
-    ValuePtr builtin(const std::string& name, BuiltIn::ApplyFunc handler);
-    ValuePtr macro(const Lambda& lambda);
-    ValuePtr atom(ValuePtr value);
+    AST builtin(const std::string& name, BuiltIn::ApplyFunc handler);
+    AST macro(const Lambda& lambda);
+    AST atom(AST value);
 
-    ValuePtr symbol(const std::string& token);
-    ValuePtr keyword(const std::string& token);
+    AST symbol(const std::string& token);
+    AST keyword(const std::string& token);
 
-    ValuePtr falseValue();
-    ValuePtr nilValue();
-    ValuePtr trueValue();
+    AST falseValue();
+    AST nilValue();
+    AST trueValue();
 
-    ValuePtr boolean(bool value);
-    ValuePtr string(const std::string& token);
-    ValuePtr integer(const std::string& token);
-    ValuePtr integer(int64_t value);
+    AST boolean(bool value);
+    AST string(const std::string& token);
+    AST integer(const std::string& token);
+    AST integer(int64_t value);
 
-    ValuePtr hash(ValueIter argsBegin, ValueIter argsEnd, bool isEvaluated);
-    ValuePtr hash(const Hash::Map& map);
-    ValuePtr hash(ValueVec* items, bool isEvaluated);
+    AST hash(AST_iter argsBegin, AST_iter argsEnd, bool isEvaluated);
+    AST hash(const Hash::Map& map);
+    AST hash(AST_vec* items, bool isEvaluated);
 
-    ValuePtr list(ValueVec* items);
-    ValuePtr list(ValueIter begin, ValueIter end);
-    ValuePtr list(ValuePtr a);
-    ValuePtr list(ValuePtr a, ValuePtr b);
-    ValuePtr list(ValuePtr a, ValuePtr b, ValuePtr c);
+    AST list(AST_vec* items);
+    AST list(AST_iter begin, AST_iter end);
+    AST list(AST a);
+    AST list(AST a, AST b);
+    AST list(AST a, AST b, AST c);
 
-    ValuePtr vector(ValueVec* items);
-    ValuePtr vector(ValueIter begin, ValueIter end);
+    AST vector(AST_vec* items);
+    AST vector(AST_iter begin, AST_iter end);
 } // namespace type
 
 #endif // TYPES_H

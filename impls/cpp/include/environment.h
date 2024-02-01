@@ -10,22 +10,22 @@
 
 class Env : public ReferenceCounter {
 public:
-    Env(EnvPtr outer = NULL) : m_outer(outer) { }
+    Env(EnvPtr outer = NULL) : m_outer_env(outer) { }
     Env(EnvPtr outer,
            const std::vector<std::string>& bindings,
-           ValueIter argsBegin, ValueIter argsEnd);
+           AST_iter argsBegin, AST_iter argsEnd);
 
     ~Env() { }
 
-    ValuePtr get(const std::string& symbol);
+    AST get(const std::string& symbol);
     EnvPtr find(const std::string& symbol);
-    ValuePtr set(const std::string& symbol, ValuePtr value);
+    AST set(const std::string& symbol, AST value);
     EnvPtr getRoot();
 
 private:
-    typedef std::map<std::string, ValuePtr> Map;
+    typedef std::map<std::string, AST> Map;
     Map m_map;
-    EnvPtr m_outer;
+    EnvPtr m_outer_env;
 };
 
 #endif // ENVIRONMENT_H
