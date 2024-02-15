@@ -5,13 +5,6 @@
 #include <string>
 #include <regex>
 
-static const std::regex TOKEN_REGEXES[] = {
-    std::regex("~@"),
-    std::regex("[\\[\\]{}()'`~^@]"),
-    std::regex("\"(?:\\\\.|[^\\\\\"])*\""),
-    std::regex("[^\\s\\[\\]{}('\"`,;)]+"),
-};
-
 class Tokeniser {
 public:
     Tokeniser(const std::string& line)

@@ -10,6 +10,13 @@ void Tokeniser::nextToken()
         return;
     }
 
+    static const std::regex TOKEN_REGEXES[] = {
+        std::regex("~@"),
+        std::regex("[\\[\\]{}()'`~^@]"),
+        std::regex("\"(?:\\\\.|[^\\\\\"])*\""),
+        std::regex("[^\\s\\[\\]{}('\"`,;)]+"),
+    };
+
     for ( const std::regex& token_regex : TOKEN_REGEXES ) {
         if ( matchRegex(token_regex) ) {
             return;

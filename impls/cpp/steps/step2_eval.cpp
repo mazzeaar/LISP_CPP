@@ -41,7 +41,7 @@ int main()
         std::string out = "";
 
         try {
-            out = read_eval_print(line, env);
+            out = rep(line, env);
         }
         catch ( EmptyInputException& e ) {
             continue;
@@ -71,7 +71,7 @@ std::string PRINT(AST ast)
     return ast->toString(true);
 }
 
-std::string read_eval_print(const std::string& input, EnvPtr env)
+std::string rep(const std::string& input, EnvPtr env)
 {
     return PRINT(EVAL(READ(input), env));
 }

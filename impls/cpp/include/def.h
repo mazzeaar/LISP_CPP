@@ -15,6 +15,7 @@ typedef RefCountedPtr<Env>          EnvPtr;
 extern AST READ(std::string& input);
 extern AST EVAL(AST tokens, EnvPtr env);
 extern std::string PRINT(AST tokens);
-extern std::string read_eval_print(const std::string& param, EnvPtr env);
+extern std::string rep(const std::string& param, EnvPtr env);
+extern AST APPLY(AST op, AST_iter argsBegin, AST_iter argsEnd);
 
 #endif // DEF_H

@@ -3,8 +3,15 @@
 #include <cassert>
 
 namespace type {
-    // AST lambda(const std::vector<std::string>&, AST, malEnvPtr);
-    // AST macro(const Lambda& lambda);
+    AST macro(const Lambda& lambda)
+    {
+        return AST(new Lambda(lambda, true));
+    }
+
+    AST lambda(const std::vector<std::string>& bindings, AST body, EnvPtr env)
+    {
+        return AST(new Lambda(bindings, body, env));
+    }
 
     AST builtin(const std::string& name, BuiltIn::ApplyFunc handler)
     {
@@ -132,12 +139,13 @@ bool Expression::isEqualTo(const Expression* rhs) const
     bool types_match = (typeid(*this) == typeid(*rhs))
         || (dynamic_cast<const Sequence*>(this) && dynamic_cast<const Sequence*>(rhs));
 
-    return types_match && (this == rhs);
+    return types_match && ((*this) == rhs);
 }
 
 bool Expression::isTrue() const
 {
-    return (this != type::falseValue().ptr() && this != type::nilValue().ptr());
+    return this != type::falseValue().ptr()
+        && this != type::nilValue().ptr();
 }
 
 AST Expression::eval(EnvPtr env)
@@ -145,6 +153,15 @@ AST Expression::eval(EnvPtr env)
     return AST(this);
 }
 
+AST Expression::withMeta(AST meta) const
+{
+    return doWithMeta(meta);
+}
+
+AST Expression::meta() const
+{
+    return m_meta.ptr() == NULL ? type::nilValue() : m_meta;
+}
 
 // ================================
 // ATOM
@@ -197,6 +214,11 @@ bool String::operator==(const Expression* rhs) const
     return value() == static_cast<const String*>(rhs)->value();
 }
 
+std::string String::escapedValue() const
+{
+    return escape(value());
+}
+
 
 // ================================
 // SEQUENCE
@@ -231,6 +253,7 @@ bool Sequence::operator==(const Expression* rhs) const
     AST_iter this_it = m_items->begin(),
         rhs_it = rhs_seq->begin(),
         end = m_items->end();
+
     while ( this_it != end ) {
         if ( !(*this_it)->isEqualTo((*rhs_it).ptr()) ) {
             return false;
@@ -247,8 +270,8 @@ AST_vec* Sequence::evalItems(EnvPtr env) const
 {
     AST_vec* items = new AST_vec;;
     items->reserve(count());
-    for ( auto it = m_items->begin(), end = m_items->end(); it != end; ++it ) {
-        items->push_back((*it)->eval(env));
+    for ( AST_iter it = m_items->begin(); it != m_items->end(); ++it ) {
+        items->push_back(EVAL(*it, env));
     }
 
     return items;
@@ -256,7 +279,7 @@ AST_vec* Sequence::evalItems(EnvPtr env) const
 
 AST Sequence::first() const
 {
-    return count() == 0 ? type::nilValue() : (*m_items)[0];
+    return count() == 0 ? type::nilValue() : this->item(0);
 }
 
 AST Sequence::rest() const
@@ -299,17 +322,6 @@ AST List::eval(EnvPtr env)
     if ( count() == 0 ) {
         return AST(this);
     }
-
-    auto APPLY = [ ] (AST op, AST_iter begin, AST_iter end)
-    {
-        const Applicable* handler = dynamic_cast<Applicable*>(op.ptr());
-
-        if ( handler == NULL ) {
-            throw "handler is NULL";
-        }
-
-        return handler->apply(begin, end);
-    };
 
     std::unique_ptr<AST_vec> items(evalItems(env));
     auto it = items->begin();
@@ -465,8 +477,8 @@ AST Hash::eval(EnvPtr env)
 
     Hash::Map map;
 
-    for ( auto it = m_map.begin(), end = m_map.end(); it != end; ++it ) {
-        map[it->first] = (it->second)->eval(env);
+    for ( auto it = m_map.begin(); it != m_map.end(); ++it ) {
+        map[it->first] = EVAL(it->second, env);
     }
     return type::hash(map);
 }
@@ -508,4 +520,56 @@ AST Hash::values() const
 AST BuiltIn::apply(AST_iter argsBegin, AST_iter argsEnd) const
 {
     return m_handler(m_name, argsBegin, argsEnd);
+}
+
+// ================================
+// LAMBDA
+Lambda::Lambda(const std::vector<std::string>& bindings, AST body, EnvPtr env)
+    : m_bindings(bindings), m_body(body),
+    m_env(env), m_isMacro(false)
+{ }
+
+Lambda::Lambda(const Lambda& that, AST meta)
+    : Applicable(meta),
+    m_bindings(that.m_bindings), m_body(that.m_body),
+    m_env(that.m_env), m_isMacro(that.m_isMacro)
+{ }
+
+Lambda::Lambda(const Lambda& that, bool isMacro)
+    : Applicable(that.m_meta),
+    m_bindings(that.m_bindings), m_body(that.m_body),
+    m_env(that.m_env), m_isMacro(isMacro)
+{ }
+
+AST Lambda::doWithMeta(AST meta) const
+{
+    return new Lambda(*this, meta);
+}
+
+AST Lambda::apply(AST_iter argsBegin, AST_iter argsEnd) const
+{
+    return EVAL(m_body, makeEnv(argsBegin, argsEnd));
+}
+
+EnvPtr Lambda::makeEnv(AST_iter argsBegin, AST_iter argsEnd) const
+{
+    return EnvPtr(new Env(m_env, m_bindings, argsBegin, argsEnd));
+}
+
+bool Lambda::operator==(const Expression* rhs) const
+{
+    return this == rhs;
+}
+
+const std::string Lambda::toString(bool readably) const
+{
+    std::ostringstream oss;
+    if ( m_isMacro ) {
+        oss << "#user-macro(" << this << ")";
+    }
+    else {
+        oss << "#user-function(" << this << ")";
+    }
+
+    return oss.str();
 }

@@ -6,9 +6,6 @@
 #include "def.h"
 #include "environment.h"
 
-AST READ(const std::string& input);
-AST EVAL(AST tokens);
-std::string PRINT(AST tokens);
 std::string REP(const std::string& param);
 
 bool read_line(const std::string& prompt, std::string& line)
@@ -64,4 +61,15 @@ std::string PRINT(AST tokens)
 std::string REP(const std::string& input)
 {
     return PRINT(EVAL(READ(input)));
+}
+
+// for the linker ^^
+AST EVAL(AST ast, EnvPtr env)
+{
+    return type::nilValue();
+}
+
+AST APPLY(AST op, AST_iter argsBegin, AST_iter argsEnd)
+{
+    return type::nilValue();
 }

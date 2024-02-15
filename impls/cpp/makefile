@@ -1,48 +1,46 @@
 CXX = g++
 CXXFLAGS = -Wall -march=native -std=c++20 -O3
+
 INCLUDEDIR = include
 SRCDIR = src
+STEPSDIR = steps
 BINDIR = bin
 OBJDIR = obj
+LIBDIR = lib
+LIBNAME = libmal.a
 
-.PHONY: all clean test all_test
+LIB_SRCS := $(wildcard $(SRCDIR)/*.cpp)
+LIB_OBJS := $(LIB_SRCS:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
 
-STEP1_OBJS := $(OBJDIR)/utils.o $(OBJDIR)/tokenizer.o $(OBJDIR)/types.o $(OBJDIR)/parser.o
-STEP2_OBJS := $(STEP1_OBJS) $(OBJDIR)/environment.o
+STEP_SRCS := $(wildcard $(STEPSDIR)/*.cpp)
+STEP_OBJS := $(STEP_SRCS:$(STEPSDIR)/%.cpp=$(OBJDIR)/%.o)
 
-all: clean step2_eval step1_read_print step0_repl
+STEPS := $(STEP_SRCS:$(STEPSDIR)/%.cpp=%)
 
-step0_repl: $(OBJDIR)/step0_repl.o | $(BINDIR)
-	@echo "linking $@"
-	$(CXX) $^ -o $(BINDIR)/$@
+.PHONY: all clean test tests
 
-step1_read_print:  $(OBJDIR)/step1_read_print.o $(STEP2_OBJS) | $(BINDIR)
-	@echo "linking $@"
-	$(CXX) $^ -o $(BINDIR)/$@
+all: clean $(STEPS)
 
-step2_eval: $(OBJDIR)/step2_eval.o $(STEP2_OBJS) | $(BINDIR)
-	@echo "linking $@"
-	$(CXX) $^ -o $(BINDIR)/$@
+$(OBJDIR) $(BINDIR):
+	@mkdir -p $@
+
+$(STEPS): %: $(OBJDIR)/%.o $(LIBDIR)/$(LIBNAME) | $(BINDIR)
+	$(CXX) $(CXXFLAGS) -L$(LIBDIR) $^ -o $(BINDIR)/$@
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp | $(OBJDIR)
-	@echo "compiling $<"
 	$(CXX) $(CXXFLAGS) -I$(INCLUDEDIR) -c $< -o $@
 
-$(OBJDIR):
-	@mkdir -p $(OBJDIR)
+$(OBJDIR)/%.o: $(STEPSDIR)/%.cpp | $(OBJDIR)
+	$(CXX) $(CXXFLAGS) -I$(INCLUDEDIR) -c $< -o $@
 
-$(BINDIR):
-	@mkdir -p $(BINDIR)
+$(LIBDIR)/$(LIBNAME): $(LIB_OBJS)
+	ar rcs $@ $^
 
-test: clean 
-	@(cd ../../ && make "test^cpp^step2")
+test: clean
+	(cd ../../ && make "test^cpp^step7")
 
-run: step2_eval
-	@bin/$^
-
-all_test: clean 
-	@(cd ../../ && make "test^cpp")
+tests: clean
+	(cd ../../ && make "test^cpp")
 
 clean:
-	@echo "cleaning..."
 	@rm -rf $(OBJDIR) $(BINDIR)

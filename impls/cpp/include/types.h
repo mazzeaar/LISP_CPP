@@ -24,8 +24,11 @@ public:
 
     virtual AST eval(EnvPtr env);
 
-    virtual const std::string toString(bool readably) const = 0;
+    AST meta() const;
+    AST withMeta(AST meta) const;
+    virtual AST doWithMeta(AST meta) const = 0;
 
+    virtual const std::string toString(bool readably) const = 0;
     friend std::ostream& operator<<(std::ostream& os, const Expression& ex)
     {
         return os << ex.toString(true);
@@ -47,20 +50,13 @@ T* value_cast(AST obj, const char* typeName)
 }
 
 #define VALUE_CAST(Type, Value) value_cast<Type>(Value, #Type)
+#define DYNAMIC_CAST(Type, Value) (dynamic_cast<Type*>((Value).ptr()))
+#define STATIC_CAST(Type, Value) (static_cast<Type*>((Value).ptr()))
 
-class Atom : public Expression {
-public:
-    Atom(AST value) : m_atom(value) { }
-    Atom(const Atom& that, AST meta)
-        : Expression(meta), m_atom(that.m_atom)
-    { }
-
-    const std::string toString(bool readably) const;
-    bool operator==(const Expression* rhs) const;
-
-private:
-    AST m_atom;
-};
+#define WITH_META(Type) \
+    virtual AST doWithMeta(AST meta) const { \
+        return new Type(*this, meta);  \
+} \
 
 class Constant : public Expression {
 public:
@@ -69,9 +65,10 @@ public:
         : Expression(meta), m_name(that.m_name)
     { }
 
-    const std::string toString(bool readably) const;
-    bool operator==(const Expression* rhs) const;
+    virtual const std::string toString(bool readably) const;
+    virtual bool operator==(const Expression* rhs) const;
 
+    WITH_META(Constant);
 private:
     const std::string m_name;
 };
@@ -85,11 +82,31 @@ public:
 
     int64_t value() const { return m_val; }
 
-    const std::string toString(bool readably) const;
-    bool operator==(const Expression* rhs) const;
+    virtual const std::string toString(bool readably) const;
+    virtual bool operator==(const Expression* rhs) const;
+
+    WITH_META(Integer);
 
 private:
     const int64_t m_val;
+};
+
+class Atom : public Expression {
+public:
+    Atom(AST value) : m_atom(value) { }
+    Atom(const Atom& that, AST meta)
+        : Expression(meta), m_atom(that.m_atom)
+    { }
+
+    const std::string toString(bool readably) const;
+    bool operator==(const Expression* rhs) const;
+
+    AST deref() const { return m_atom; }
+    AST reset(AST value) { return m_atom = value; }
+
+    WITH_META(Atom);
+private:
+    AST m_atom;
 };
 
 class StringBase : public Expression {
@@ -110,8 +127,12 @@ public:
     String(const std::string& token) : StringBase(token) { }
     String(const String& that, AST meta) : StringBase(that, meta) { }
 
-    const std::string toString(bool readably) const override;
-    bool operator==(const Expression* rhs) const override;
+    virtual const std::string toString(bool readably) const;
+    virtual bool operator==(const Expression* rhs) const;
+
+    std::string escapedValue() const;
+
+    WITH_META(String);
 };
 
 class Keyword : public StringBase {
@@ -119,15 +140,19 @@ public:
     Keyword(const std::string& token) : StringBase(token) { }
     Keyword(const Keyword& that, AST meta) : StringBase(that, meta) { }
 
-    bool operator==(const Expression* rhs) const override;
+    virtual bool operator==(const Expression* rhs) const;
+
+    WITH_META(Keyword);
 };
 class Symbol : public StringBase {
 public:
     Symbol(const std::string& token) : StringBase(token) { }
     Symbol(const Symbol& that, AST meta) : StringBase(that, meta) { }
 
-    AST eval(EnvPtr env) override;
-    bool operator==(const Expression* rhs) const override;
+    virtual AST eval(EnvPtr env);
+
+    bool operator==(const Expression* rhs) const;
+    WITH_META(Symbol);
 };
 
 class Sequence : public Expression {
@@ -140,23 +165,24 @@ public:
 
     virtual ~Sequence() { delete m_items; }
 
+    virtual AST_vec* evalItems(EnvPtr env) const;
+
     size_t count() const { return m_items->size(); }
     bool isEmpty() const { return m_items->empty(); }
-    AST operator[](int index) const { return (*m_items)[index]; }
 
-    virtual AST_vec* evalItems(EnvPtr env) const;
+    AST item(int index) const { return (*m_items)[index]; }
+    AST operator[](int index) const { return (*m_items)[index]; }
 
     AST_iter begin() const { return m_items->begin(); }
     AST_iter end() const { return m_items->end(); }
 
-    virtual const std::string toString(bool readably) const override;
-    bool operator==(const Expression* rhs) const override;
-
-    virtual AST conj(AST_iter argsBegin, AST_iter argsEnd) const = 0;
-
     AST first() const;
     virtual AST rest() const;
 
+    virtual AST conj(AST_iter argsBegin, AST_iter argsEnd) const = 0;
+
+    bool operator==(const Expression* rhs) const;
+    virtual const std::string toString(bool readably) const;
 private:
     AST_vec* const m_items;
 };
@@ -167,20 +193,26 @@ public:
     List(AST_iter begin, AST_iter end) : Sequence(begin, end) { }
     List(const List& that, AST meta) : Sequence(that, meta) { }
 
-    virtual AST eval(EnvPtr env) override;
-    virtual AST conj(AST_iter argsBegin, AST_iter argsEnd) const override;
-    const std::string toString(bool readably) const override;
+
+    virtual AST eval(EnvPtr env);
+
+    virtual AST conj(AST_iter argsBegin, AST_iter argsEnd) const;
+
+    virtual const std::string toString(bool readably) const;
+    WITH_META(List);
 };
 
 class Vector : public Sequence {
 public:
     Vector(AST_vec* items) : Sequence(items) { }
     Vector(AST_iter begin, AST_iter end) : Sequence(begin, end) { }
-    Vector(const List& that, AST meta) : Sequence(that, meta) { }
+    Vector(const Vector& that, AST meta) : Sequence(that, meta) { }
 
-    AST eval(EnvPtr env) override;
-    virtual AST conj(AST_iter argsBegin, AST_iter argsEnd) const override;
-    const std::string toString(bool readably) const override;
+    virtual AST eval(EnvPtr env);
+    virtual AST conj(AST_iter argsBegin, AST_iter argsEnd) const;
+    virtual const std::string toString(bool readably) const;
+
+    WITH_META(Vector);
 };
 
 class Hash : public Expression {
@@ -199,7 +231,7 @@ public:
     AST dissoc(AST_iter argsBegin, AST_iter argsEnd) const;
     bool contains(AST key) const;
 
-    AST eval(EnvPtr env) override;
+    AST eval(EnvPtr env);
     AST get(AST key) const;
     AST keys() const;
     AST values() const;
@@ -208,9 +240,9 @@ public:
     static Hash::Map addToMap(Hash::Map& map, AST_iter begin, AST_iter end);
     static Hash::Map createMap(AST_iter begin, AST_iter end);
 
-    const std::string toString(bool readably) const override;
-    bool operator==(const Expression* rhs) const override;
-
+    const std::string toString(bool readably) const;
+    bool operator==(const Expression* rhs) const;
+    WITH_META(Hash);
 private:
     const Map m_map;
     const bool m_isEval;
@@ -238,7 +270,7 @@ public:
     { }
 
     virtual AST apply(AST_iter argsBegin, AST_iter argsEnd) const;
-
+    const std::string name() const { return m_name; }
     const std::string toString(bool readably) const
     {
         return "#builtin-function(" + m_name + ")";
@@ -249,17 +281,40 @@ public:
         return this == rhs;
     }
 
+    WITH_META(BuiltIn);
 private:
     const std::string m_name;
     ApplyFunc* m_handler;
 };
 
-class Lambda : public Applicable { };
+class Lambda : public Applicable {
+public:
+    Lambda(const std::vector<std::string>& bindings, AST body, EnvPtr env);
+    Lambda(const Lambda& that, AST meta);
+    Lambda(const Lambda& that, bool isMacro);
+
+    virtual AST apply(AST_iter argsBegin, AST_iter argsEnd) const;
+    EnvPtr makeEnv(AST_iter argsBegin, AST_iter argsEnd) const;
+
+    virtual bool operator==(const Expression* rhs) const;
+    virtual const std::string toString(bool readably) const;
+
+    AST getBody() const { return m_body; }
+    bool isMacro() const { return m_isMacro; }
+
+    virtual AST doWithMeta(AST meta) const;
+
+private:
+    const std::vector<std::string> m_bindings;
+    const AST m_body;
+    const EnvPtr m_env;
+    const bool m_isMacro;
+};
 
 namespace type {
-    // AST lambda(const std::vector<std::string>&, AST, malEnvPtr);
 
     AST builtin(const std::string& name, BuiltIn::ApplyFunc handler);
+    AST lambda(const std::vector<std::string>& bindings, AST body, EnvPtr env);
     AST macro(const Lambda& lambda);
     AST atom(AST value);
 

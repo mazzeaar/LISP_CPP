@@ -7,12 +7,12 @@ Env::Env(EnvPtr outer,
     : m_outer_env(outer)
 {
     const int n = bindings.size();
-    AST_iter it = argsBegin;
-
+    auto it = argsBegin;
     for ( int i = 0; i < n; ++i ) {
         if ( bindings[i] == "&" ) {
             assert(i == n - 2 && "There must be one parameter after the &");
             set(bindings[n-1], type::list(it, argsEnd));
+            return;
         }
 
         assert(it != argsEnd && "Not enough parameters");
