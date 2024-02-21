@@ -46,12 +46,12 @@ public:
         return *this;
     }
 
-    bool operator == (const RefCountedPtr& rhs) const { return m_object == rhs.m_object; }
-    bool operator != (const RefCountedPtr& rhs) const { return m_object != rhs.m_object; }
+    bool operator==(const RefCountedPtr& rhs) const { return m_object == rhs.m_object; }
+    bool operator!=(const RefCountedPtr& rhs) const { return m_object != rhs.m_object; }
 
     operator bool() const { return m_object != NULL; }
 
-    T* operator -> () const { return m_object; }
+    T* operator->() const { return m_object; }
     T* ptr() const { return m_object; }
 
     friend std::ostream& operator<<(std::ostream& os, const RefCountedPtr& ptr)

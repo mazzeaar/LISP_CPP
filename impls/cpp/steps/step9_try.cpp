@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
 
 AST EVAL(AST ast, EnvPtr env)
 {
-    if ( !env ) {
+    if ( env == nullptr ) {
         env = rootEnv;
     }
 
@@ -105,25 +105,13 @@ AST EVAL(AST ast, EnvPtr env)
                 return env->set(id->value(), EVAL(list->item(2), env));
             }
 
-            if ( special == "let*" ) {
-                if ( argCount != 2 ) {
-                    throw LISP_ERROR("\"let*\" expects 2 args, got" + std::to_string(argCount));
-                }
+            if ( special == "defmacro!" ) {
+                checkArgsIs("defmacro!", 2, argCount);
 
-                const Sequence* bindings = VALUE_CAST(Sequence, list->item(1));
-                int count = bindings->count();
-                if ( count % 2 != 0 ) {
-                    throw LISP_ERROR("\"let*\" expects an even number of args");
-                }
-
-                EnvPtr inner(new Env(env));
-                for ( int i = 0; i < count; i += 2 ) {
-                    const Symbol* var = VALUE_CAST(Symbol, bindings->item(i));
-                    inner->set(var->value(), EVAL(bindings->item(i + 1), inner));
-                }
-                ast = list->item(2);
-                env = inner;
-                continue;
+                const Symbol* id = VALUE_CAST(Symbol, list->item(1));
+                AST body = EVAL(list->item(2), env);
+                const Lambda* lambda = VALUE_CAST(Lambda, body);
+                return env->set(id->value(), type::macro(*lambda));
             }
 
             if ( special == "do" ) {
@@ -166,13 +154,25 @@ AST EVAL(AST ast, EnvPtr env)
                 continue;
             }
 
-            if ( special == "defmacro!" ) {
-                checkArgsIs("defmacro!", 2, argCount);
+            if ( special == "let*" ) {
+                if ( argCount != 2 ) {
+                    throw LISP_ERROR("\"let*\" expects 2 args, got" + std::to_string(argCount));
+                }
 
-                const Symbol* id = VALUE_CAST(Symbol, list->item(1));
-                AST body = EVAL(list->item(2), env);
-                const Lambda* lambda = VALUE_CAST(Lambda, body);
-                return env->set(id->value(), type::macro(*lambda));
+                const Sequence* bindings = VALUE_CAST(Sequence, list->item(1));
+                int count = bindings->count();
+                if ( count % 2 != 0 ) {
+                    throw LISP_ERROR("\"let*\" expects an even number of args");
+                }
+
+                EnvPtr inner(new Env(env));
+                for ( int i = 0; i < count; i += 2 ) {
+                    const Symbol* var = VALUE_CAST(Symbol, bindings->item(i));
+                    inner->set(var->value(), EVAL(bindings->item(i + 1), inner));
+                }
+                ast = list->item(2);
+                env = inner;
+                continue;
             }
 
             if ( special == "macroexpand" ) {
@@ -196,6 +196,49 @@ AST EVAL(AST ast, EnvPtr env)
                 return list->item(1);
             }
 
+            if ( special == "try*" ) {
+                AST tryBody = list->item(1);
+
+                if ( argCount == 1 ) {
+                    ast = EVAL(tryBody, env);
+                    continue;
+                }
+
+                checkArgsIs("try*", 2, argCount);
+                const List* catchBlock = VALUE_CAST(List, list->item(2));
+
+                checkArgsIs("catch*", 2, catchBlock->count() - 1);
+
+                if ( "catch*" != VALUE_CAST(Symbol, catchBlock->item(0))->value() ) {
+                    throw "catch block must begin with catch*";
+                }
+
+                const Symbol* excSym = VALUE_CAST(Symbol, catchBlock->item(1));
+
+                AST excVal;
+
+                try {
+                    ast = EVAL(tryBody, env);
+                }
+                catch ( std::string& s ) {
+                    excVal = type::string(s);
+                }
+                catch ( EmptyInputException& ) {
+                    ast = type::nilValue();
+                }
+                catch ( AST& o ) {
+                    excVal = o;
+                }
+
+                // got an exception
+                if ( excVal ) {
+                    env = EnvPtr(new Env(env));
+                    env->set(excSym->value(), excVal);
+                    ast = catchBlock->item(2);
+                }
+
+                continue;
+            }
         }
 
         std::unique_ptr<AST_vec> items(list->evalItems(env));
@@ -314,8 +357,11 @@ std::string safe_rep(const std::string& input, EnvPtr env)
     catch ( EmptyInputException& e ) {
         return "";
     }
+    catch ( AST& mv ) {
+        return "Error: " + mv->toString(true);
+    }
     catch ( std::string& s ) {
-        return s;
+        return "Error: " + s;
     };
 }
 

@@ -10,7 +10,7 @@ public:
     Tokeniser(const std::string& line)
         : m_iter(line.begin()), m_end(line.end())
     {
-        nextToken();
+        popToken();
     }
 
     inline std::string peek() const
@@ -23,14 +23,14 @@ public:
     {
         assert(!eof() && "Tokeniser::next() reading past EOF\n");
         std::string token = peek();
-        nextToken();
+        popToken();
         return token;
     }
 
     inline bool eof() const { return m_iter == m_end; }
 
 private:
-    void nextToken();
+    void popToken();
     void skipWhitespace();
     bool matchRegex(const std::regex& regex);
 

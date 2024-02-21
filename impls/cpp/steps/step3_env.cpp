@@ -84,7 +84,6 @@ AST EVAL(AST ast, EnvPtr env)
         return ast->eval(env);
     }
 
-
     if ( const Symbol* symbol = dynamic_cast<Symbol*>(list->item(0).ptr()) ) {
         std::string special = symbol->value();
         int argCount = list->count() - 1;

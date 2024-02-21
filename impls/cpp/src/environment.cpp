@@ -32,7 +32,7 @@ AST Env::get(const std::string& symbol)
         }
     }
 
-    throw LISP_ERROR(symbol, " not found!");
+    throw LISP_ERROR("\'", symbol, "\'", " not found");
 }
 
 EnvPtr Env::find(const std::string& symbol)

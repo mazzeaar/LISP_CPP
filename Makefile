@@ -50,7 +50,7 @@ include Makefile.impls
 # General command line settings
 #
 
-MAL_IMPL = js
+MAL_IMPL = cpp
 
 # Path to loccount for counting LOC stats
 LOCCOUNT = loccount
@@ -61,7 +61,7 @@ TEST_OPTS =
 # Test with previous test files not just the test files for the
 # current step. Step 0 and 1 tests are special and not included in
 # later steps.
-REGRESS =
+REGRESS = 1
 
 HARD=
 DEFERRABLE=1

@@ -1,7 +1,7 @@
 #include "tokenizer.h"
 #include "lisp_error.h"
 
-void Tokeniser::nextToken()
+void Tokeniser::popToken()
 {
     m_iter += m_token.size();
     skipWhitespace();
@@ -25,10 +25,10 @@ void Tokeniser::nextToken()
 
     std::string mismatch(m_iter, m_end);
     if ( mismatch[0] == '"' ) {
-        throw LISP_ERROR("unbalanced");
+        throw ParserError("unbalanced");
     }
     else {
-        throw LISP_ERROR("unexpected: " + mismatch);
+        throw ParserError("unexpected: " + mismatch);
     }
 }
 

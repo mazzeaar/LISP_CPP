@@ -296,6 +296,7 @@ while t.next():
         res = r.read_to_prompt(['\r\n[^\s()<>]+> ', '\n[^\s()<>]+> '],
                                 timeout=args.test_timeout)
         #print "%s,%s,%s" % (idx, repr(p.before), repr(p.after))
+
         if (res == None):
             log(" -> TIMEOUT (line %d)" % t.line_num)
             raise TestTimeout("TIMEOUT (line %d)" % t.line_num)

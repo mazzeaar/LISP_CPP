@@ -171,7 +171,6 @@ public:
     bool isEmpty() const { return m_items->empty(); }
 
     AST item(int index) const { return (*m_items)[index]; }
-    AST operator[](int index) const { return (*m_items)[index]; }
 
     AST_iter begin() const { return m_items->begin(); }
     AST_iter end() const { return m_items->end(); }
@@ -195,10 +194,9 @@ public:
 
 
     virtual AST eval(EnvPtr env);
-
     virtual AST conj(AST_iter argsBegin, AST_iter argsEnd) const;
-
     virtual const std::string toString(bool readably) const;
+
     WITH_META(List);
 };
 
@@ -271,6 +269,7 @@ public:
 
     virtual AST apply(AST_iter argsBegin, AST_iter argsEnd) const;
     const std::string name() const { return m_name; }
+
     const std::string toString(bool readably) const
     {
         return "#builtin-function(" + m_name + ")";

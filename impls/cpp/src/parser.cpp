@@ -61,12 +61,10 @@ AST read_atom(Tokeniser& tokenizer)
     if ( token[0] == '"' ) {
         return type::string(unescape(token));
     }
-
-    if ( token[0] == ':' ) {
+    else if ( token[0] == ':' ) {
         return type::keyword(token);
     }
-
-    if ( token == "^" ) {
+    else if ( token == "^" ) {
         AST meta = read_form(tokenizer);
         AST value = read_form(tokenizer);
 
@@ -76,8 +74,7 @@ AST read_atom(Tokeniser& tokenizer)
     if ( auto constIt = constantTable.find(token); constIt != constantTable.end() ) {
         return constIt->second;
     }
-
-    if ( auto macroIt = macroTable.find(token); macroIt != macroTable.end() ) {
+    else if ( auto macroIt = macroTable.find(token); macroIt != macroTable.end() ) {
         return process_macro(tokenizer, macroIt->second);
     }
 

@@ -13,6 +13,7 @@
  * < <= >= > -> treat first two params as numbers, and compare
  */
 
+#include "util.h"
 #include "def.h"
 #include "environment.h"
 #include "types.h"
@@ -69,46 +70,6 @@ private:
     Node* m_head;
 };
 
-int checkArgsIs(const std::string& name, int expected, int got)
-{
-    if ( got != expected ) {
-        throw LISP_ERROR("\"", name, "\" expects ", std::to_string(expected), " args, ",
-            std::to_string(got), " supplied");
-    }
-
-    return got;
-}
-
-int checkArgsBetween(const std::string& name, int min, int max, int got)
-{
-    if ( got < min || got > max ) {
-        throw LISP_ERROR("\"", name, "\" expects between ", std::to_string(min),
-         " and ", std::to_string(max), " args, ",
-            std::to_string(got), " supplied");
-    }
-
-    return got;
-}
-
-int checkArgsAtLeast(const std::string& name, int min, int got)
-{
-    if ( got < min ) {
-        throw LISP_ERROR("\"", name, "\" expects at least ", std::to_string(min), " args, ",
-            std::to_string(got), " supplied");
-    }
-
-    return got;
-}
-
-int checkArgsEven(const std::string& name, int got)
-{
-    if ( got % 2 != 0 ) {
-        throw LISP_ERROR("\"", name, "\" expects even number of args");
-    }
-
-    return got;
-}
-
 #define CHECK_ARGS_IS(expected)         checkArgsIs(name, expected, std::distance(argsBegin, argsEnd));
 #define CHECK_ARGS_BETWEEN(min, max)    checkArgsBetween(name, min, max, std::distance(argsBegin, argsEnd));
 #define CHECK_ARGS_AT_LEAST(min)        checkArgsAtLeast(name, min, std::distance(argsBegin, argsEnd));
@@ -147,9 +108,9 @@ static StaticList<BuiltIn*> handlers;
         CHECK_ARGS_IS(2); \
         ARG(Integer, lhs); \
         ARG(Integer, rhs); \
-        if constexpr (checkDivByZero) { \
+        if (checkDivByZero) { \
             if (checkDivByZero && rhs->value() == 0) { \
-                LISP_ERROR("Division by zero"); \
+                throw LISP_ERROR("Division by zero"); \
             } \
         } \
         return type::integer(lhs->value() op rhs->value()); \
@@ -232,12 +193,6 @@ BUILTIN("=")
     return type::boolean(lhs->isEqualTo(rhs));
 }
 
-BUILTIN("prn")
-{
-    std::cout << printValues(argsBegin, argsEnd, " ", true) << "\n";
-    return type::nilValue();
-}
-
 BUILTIN("list")
 {
     return type::list(argsBegin, argsEnd);
@@ -270,6 +225,12 @@ BUILTIN("str")
 BUILTIN("pr-str")
 {
     return type::string(printValues(argsBegin, argsEnd, " ", true));
+}
+
+BUILTIN("prn")
+{
+    std::cout << printValues(argsBegin, argsEnd, " ", true) << "\n";
+    return type::nilValue();
 }
 
 BUILTIN("println")
@@ -455,7 +416,7 @@ BUILTIN("keyword")
         return type::keyword(":" + s->value());
     }
 
-    LISP_ERROR("keyword expects a keyword or string");
+    throw LISP_ERROR("keyword expects a keyword or string");
     return nullptr; // for the linker
 }
 
@@ -500,7 +461,7 @@ BUILTIN("nth")
 
     int i = index->value();
     if ( i < 0 || i >= seq->count() ) {
-        LISP_ERROR("Index out of range");
+        throw LISP_ERROR("Index out of range");
     }
 
     return seq->item(i);
@@ -512,6 +473,7 @@ BUILTIN("rest")
     if ( *argsBegin == type::nilValue() ) {
         return type::list(new AST_vec(0));
     }
+
     ARG(Sequence, seq);
     return seq->rest();
 }
@@ -619,10 +581,11 @@ BUILTIN("seq")
         for ( int i = 0; i < length; i++ ) {
             (*items)[i] = type::string(str.substr(i, 1));
         }
+
         return type::list(items);
     }
 
-    LISP_ERROR(arg->toString(true), "is not a string or sequence");
+    throw LISP_ERROR(arg->toString(true), "is not a string or sequence");
     return nullptr; // for linker
 }
 
@@ -635,7 +598,7 @@ BUILTIN("slurp")
     std::ifstream file(filename->value(), openmode);
 
     if ( file.fail() ) {
-        LISP_ERROR("Cannot open ", filename->value());
+        throw LISP_ERROR("Cannot open ", filename->value());
     }
 
     std::string data;
